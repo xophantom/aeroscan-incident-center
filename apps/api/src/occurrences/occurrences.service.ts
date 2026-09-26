@@ -1,5 +1,7 @@
 import {
+  OCCURRENCE_STATUSES,
   allowedFrom,
+  canTransition,
   isTooFarInFuture,
   isTooOld,
   type CreateOccurrenceInput,
@@ -63,12 +65,20 @@ export class OccurrencesService {
 
   async changeStatus(id: string, change: UpdateStatusInput): Promise<Occurrence> {
     const from = allowedFrom(change.status)
-    const updated = from.length > 0 ? await this.repository.changeStatus(id, from, change) : null
-    if (updated) return updated
+    // Se outra requisição levou o status para uma origem válida entre o update e a leitura, tenta
+    // de novo; o limite de uma volta por status garante o fim mesmo com transições em ciclo
+    for (let attempt = 0; attempt < OCCURRENCE_STATUSES.length; attempt++) {
+      const updated = from.length > 0 ? await this.repository.changeStatus(id, from, change) : null
+      if (updated) return updated
 
-    // O update condicional não diz por que falhou: 404 se o id não existe, senão 409
-    const current = await this.repository.findById(id)
-    if (!current) throw occurrenceNotFound(id)
-    throw invalidStatusTransition(current.status, change.status)
+      // O update condicional não diz por que falhou: 404 se o id não existe, 409 se o status não deixa
+      const current = await this.repository.findById(id)
+      if (!current) throw occurrenceNotFound(id)
+      if (!canTransition(current.status, change.status)) {
+        throw invalidStatusTransition(current.status, change.status)
+      }
+    }
+
+    throw writeConflict()
   }
 }

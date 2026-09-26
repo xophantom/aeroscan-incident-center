@@ -505,6 +505,24 @@ describe('Occurrences (e2e)', () => {
 
       expect(responses.map((r) => r.status).sort()).toEqual([200, 409])
     })
+
+    it('corrida entre "Resolver" e "Reconhecer": o 409 nunca contradiz o status atual', async () => {
+      for (let round = 0; round < 5; round++) {
+        const { id } = await create({ siteId: `race-${round}` })
+
+        const [resolve, acknowledge] = await Promise.all([
+          patch(id, { status: 'resolved', note: 'ok' }),
+          patch(id, { status: 'acknowledged' }),
+        ])
+
+        expect(acknowledge.status).toBe(200)
+        if (resolve.status === 409) {
+          expect(errorOf(resolve).details).toEqual({ from: 'open', to: 'resolved' })
+        } else {
+          expect(resolve.status).toBe(200)
+        }
+      }
+    })
   })
 
   describe('prioridade denormalizada', () => {

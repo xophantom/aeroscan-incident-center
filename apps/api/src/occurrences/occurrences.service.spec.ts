@@ -157,6 +157,17 @@ describe('OccurrencesService.changeStatus', () => {
     expect(repository.changeStatus).toHaveBeenCalledWith(id, ['acknowledged'], change)
   })
 
+  it('corrida: se o status virou uma origem válida no meio, tenta de novo e aplica', async () => {
+    const { service, repository } = setup()
+    const change = { status: 'resolved', note: 'ok' } as const
+    const resolved = occurrence({ status: 'resolved', note: 'ok' })
+    repository.changeStatus.mockResolvedValueOnce(null).mockResolvedValueOnce(resolved)
+    repository.findById.mockResolvedValue(occurrence({ status: 'acknowledged' }))
+
+    await expect(service.changeStatus(id, change)).resolves.toBe(resolved)
+    expect(repository.changeStatus).toHaveBeenCalledTimes(2)
+  })
+
   it('404 quando o update não aplica e a ocorrência não existe', async () => {
     const { service } = setup()
 

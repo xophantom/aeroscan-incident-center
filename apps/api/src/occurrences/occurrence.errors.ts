@@ -55,7 +55,7 @@ function invalidDetectedAt(message: string): AppException {
 export function writeConflict(): AppException {
   return new AppException(
     'WRITE_CONFLICT',
-    'Muitas criações simultâneas para este site e tipo. Tente novamente.',
+    'Muitas escritas simultâneas no mesmo registro. Tente novamente.',
     HttpStatus.SERVICE_UNAVAILABLE,
   )
 }
