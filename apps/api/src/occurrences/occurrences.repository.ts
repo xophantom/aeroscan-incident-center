@@ -34,7 +34,7 @@ const PRIORITY_EXPRESSION = {
   ],
 }
 
-/** Único ponto que conhece Mongoose. */
+/** Persistência das ocorrências: service e controller não conhecem Mongoose. */
 @Injectable()
 export class OccurrencesRepository implements OnModuleInit {
   constructor(@InjectModel(OCCURRENCE_MODEL) private readonly model: Model<OccurrenceDocument>) {}

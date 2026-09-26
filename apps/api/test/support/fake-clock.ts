@@ -1,6 +1,6 @@
 import { ClockService } from '../../src/infra/clock/clock.service'
 
-/** Relógio controlável: permite testar a janela de 10 min sem esperar. */
+/** Relógio controlável: fixa o "agora" contra o qual a API valida o detectedAt dos alertas. */
 export class FakeClock extends ClockService {
   constructor(private current: Date) {
     super()

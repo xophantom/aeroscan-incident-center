@@ -1,3 +1,4 @@
+import { MAX_SEVERITY, MIN_SEVERITY } from '@aeroscan/shared'
 import { Badge } from '../../components/ui/Badge'
 
 const SEVERITY_CLASS: Record<number, string> = {
@@ -10,7 +11,10 @@ const SEVERITY_CLASS: Record<number, string> = {
 
 export function SeverityBadge({ severity }: { severity: number }) {
   return (
-    <Badge className={SEVERITY_CLASS[severity] ?? SEVERITY_CLASS[1]} title="Severidade (1 a 5)">
+    <Badge
+      className={SEVERITY_CLASS[severity] ?? SEVERITY_CLASS[MIN_SEVERITY]}
+      title={`Severidade (${MIN_SEVERITY} a ${MAX_SEVERITY})`}
+    >
       Severidade {severity}
     </Badge>
   )

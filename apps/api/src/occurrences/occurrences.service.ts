@@ -33,7 +33,7 @@ export class OccurrencesService {
   ) {}
 
   /**
-   * Agrupa o alerta numa ocorrência aberta do mesmo site+tipo (janela de 10 min) ou cria uma nova.
+   * Agrupa o alerta numa ocorrência aberta do mesmo site+tipo dentro da janela ou cria uma nova.
    * "Buscar e depois inserir" tem corrida; quem garante uma única criação é o índice único parcial
    * (uma vaga ativa por site+tipo). Perder a corrida no insert significa que a janela agora existe:
    * basta tentar agrupar de novo.

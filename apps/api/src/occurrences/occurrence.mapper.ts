@@ -1,7 +1,7 @@
 import type { OccurrenceResponse } from '@aeroscan/shared'
 import type { Occurrence } from './occurrence'
 
-/** Entidade → contrato HTTP: datas viram ISO string e campos internos não vazam. */
+/** Entidade → contrato HTTP: datas viram ISO string e só os campos do contrato saem. */
 export function toOccurrenceResponse(occurrence: Occurrence): OccurrenceResponse {
   return {
     id: occurrence.id,

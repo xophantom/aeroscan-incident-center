@@ -4,7 +4,6 @@ import { oneOf, requestBody, requiredText } from './fields.js'
 
 const severityRange = `severity deve estar entre ${MIN_SEVERITY} e ${MAX_SEVERITY}`
 
-/** Body do POST /occurrences, com os campos do modelo do enunciado. */
 export const createOccurrenceBodySchema = requestBody({
   siteId: requiredText('siteId'),
   droneId: requiredText('droneId'),
