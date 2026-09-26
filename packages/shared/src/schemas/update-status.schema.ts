@@ -22,7 +22,11 @@ export const updateStatusBodySchema = z.discriminatedUnion(
     z.object({ status: z.literal('acknowledged' satisfies OccurrenceStatus) }),
     z.object({
       status: z.literal('resolved' satisfies OccurrenceStatus),
-      note: z.preprocess(blankToUndefined, resolutionNoteSchema.optional()),
+      // null (como a API devolve "sem nota") ou texto em branco: nota ausente
+      note: z.preprocess(
+        (value) => (value === null ? undefined : blankToUndefined(value)),
+        resolutionNoteSchema.optional(),
+      ),
     }),
   ],
   {

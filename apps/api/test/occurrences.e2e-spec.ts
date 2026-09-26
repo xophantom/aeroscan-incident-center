@@ -487,8 +487,10 @@ describe('Occurrences (e2e)', () => {
       const { id } = await create()
 
       await patch('66f4a1c2e4b0a1b2c3d4e5f6', { status: 'resolved' }).expect(404)
+      await patch('66f4a1c2e4b0a1b2c3d4e5f6', { status: 'resolved', note: null }).expect(404)
       const skipped = await patch(id, { status: 'resolved' }).expect(409)
       expect(errorOf(skipped).details).toEqual({ from: 'open', to: 'resolved' })
+      await patch(id, { status: 'resolved', note: null }).expect(409)
 
       await patch(id, { status: 'acknowledged' }).expect(200)
       await patch(id, { status: 'resolved', note: 'ok' }).expect(200)
