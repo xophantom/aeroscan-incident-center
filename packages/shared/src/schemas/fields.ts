@@ -36,6 +36,9 @@ export function blankToUndefined(value: unknown): unknown {
 }
 
 // O optional de fora é o que o Swagger enxerga; o de dentro aceita o vazio convertido
-export function optionalQueryParam<T extends z.ZodTypeAny>(schema: T) {
-  return z.preprocess(blankToUndefined, schema.optional()).optional()
+export function optionalQueryParam<T extends z.ZodTypeAny>(
+  schema: T,
+  normalize: (value: unknown) => unknown = blankToUndefined,
+) {
+  return z.preprocess(normalize, schema.optional()).optional()
 }
