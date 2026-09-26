@@ -180,25 +180,18 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toMatchObject({ id: first.id, count: 2 })
     })
 
-    it('concorrência fora de ordem: 60 alertas em 5 janelas, em paralelo, viram 5 ocorrências sem erro', async () => {
-      const windows = [0, 15, 30, 45, 60]
-      t.clock.advance(60 * MINUTE_MS)
+    it('rajada fora de ordem: 120 alertas de 40 janelas, em paralelo, viram 40 ocorrências sem erro', async () => {
+      const windows = Array.from({ length: 40 }, (_, k) => k * 11)
+      t.clock.advance((windows.at(-1) ?? 0) * MINUTE_MS)
+      const bodies = windows.flatMap((minutes) =>
+        Array.from({ length: 3 }, () => alert({ siteId: 'burst', detectedAt: at(minutes) })),
+      )
 
-      for (let round = 0; round < 3; round++) {
-        const siteId = `stress-${round}`
-        const bodies = Array.from({ length: 60 }, (_, i) =>
-          alert({ siteId, detectedAt: at(windows[i % windows.length] ?? 0) }),
-        )
+      const responses = await Promise.all(bodies.map((body) => post(body)))
 
-        const responses = await Promise.all(bodies.map((body) => post(body)))
-
-        expect(responses.map((r) => r.status).sort()).toEqual([
-          ...Array<number>(55).fill(200),
-          ...Array<number>(5).fill(201),
-        ])
-        const counts = (await list(`?siteId=${siteId}`)).map((o) => o.count)
-        expect(counts).toEqual([12, 12, 12, 12, 12])
-      }
+      expect(responses.filter((r) => r.status === 201)).toHaveLength(40)
+      expect(responses.filter((r) => r.status === 200)).toHaveLength(80)
+      expect((await list('?siteId=burst')).map((o) => o.count)).toEqual(Array<number>(40).fill(3))
     })
 
     it('alerta fora de ordem agrupa na ocorrência cuja janela o contém, não na mais recente', async () => {

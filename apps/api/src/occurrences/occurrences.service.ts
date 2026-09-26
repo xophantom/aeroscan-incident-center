@@ -1,4 +1,7 @@
 import {
+  DEDUP_WINDOW_MS,
+  MAX_ALERT_AGE_MS,
+  MAX_FUTURE_SKEW_MS,
   OCCURRENCE_STATUSES,
   allowedFrom,
   canTransition,
@@ -22,9 +25,11 @@ import {
 } from './occurrence.errors'
 import { OccurrencesRepository } from './occurrences.repository'
 
-// Cada E11000 é uma criação de outra requisição no mesmo site+tipo: com N janelas novas surgindo ao
-// mesmo tempo (ex.: drone despejando alertas atrasados), um alerta precisa de até N tentativas
-export const MAX_DEDUP_ATTEMPTS = 10
+// Cada E11000 é uma ocorrência que outra requisição criou no mesmo site+tipo, e as abertas criadas
+// distam mais de 10 min entre si: no intervalo aceito de detectedAt cabem no máximo estas, então nem
+// um drone despejando 24 h de fila de uma vez esgota as tentativas
+export const MAX_DEDUP_ATTEMPTS =
+  Math.floor((MAX_ALERT_AGE_MS + MAX_FUTURE_SKEW_MS) / DEDUP_WINDOW_MS) + 1
 
 interface RegisterResult {
   occurrence: Occurrence
