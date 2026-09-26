@@ -15,6 +15,7 @@ export const T0 = new Date('2026-09-25T12:00:00.000Z')
 
 export interface TestApp {
   app: INestApplication
+  connection: Connection
   clock: FakeClock
   http: ReturnType<typeof request>
   reset(): Promise<void>
@@ -57,6 +58,7 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
 
   return {
     app,
+    connection,
     clock,
     http: request(app.getHttpServer() as Server),
     async reset() {

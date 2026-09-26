@@ -50,8 +50,10 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
   { collection: 'occurrences', timestamps: true, versionKey: false },
 )
 
-// Listagem: filtros por igualdade seguidos da ordenação, tudo no mesmo índice
-OccurrenceSchema.index({ status: 1, siteId: 1, priority: -1, detectedAt: -1 })
+// Listagem: igualdade do filtro seguida da ordenação, para nenhuma combinação ordenar em memória
+OccurrenceSchema.index({ priority: -1, detectedAt: -1 }) // sem filtro
+OccurrenceSchema.index({ status: 1, priority: -1, detectedAt: -1 }) // ?status=
+OccurrenceSchema.index({ siteId: 1, priority: -1, detectedAt: -1 }) // ?siteId= (com ou sem status)
 
 // Busca do agrupamento: site, tipo e status por igualdade; detectedAt como faixa e ordenação
 OccurrenceSchema.index({ siteId: 1, type: 1, status: 1, detectedAt: 1 })

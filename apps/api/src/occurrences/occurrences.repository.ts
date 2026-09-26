@@ -14,6 +14,9 @@ import { isObjectIdOrHexString, type FilterQuery, type Model } from 'mongoose'
 import type { Occurrence } from './occurrence'
 import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from './occurrence.schema'
 
+/** Prioridade desc; empate → detecção mais recente primeiro. */
+export const LIST_ORDER = { priority: -1, detectedAt: -1 } as const
+
 /** Único ponto que conhece Mongoose. */
 @Injectable()
 export class OccurrencesRepository implements OnModuleInit {
@@ -100,10 +103,7 @@ export class OccurrencesRepository implements OnModuleInit {
     if (filter.status) query.status = filter.status
     if (filter.siteId) query.siteId = filter.siteId
 
-    const docs = await this.model
-      .find(query)
-      .sort({ priority: -1, detectedAt: -1 })
-      .lean<LeanOccurrence[]>()
+    const docs = await this.model.find(query).sort(LIST_ORDER).lean<LeanOccurrence[]>()
 
     return docs.map(toOccurrence)
   }

@@ -6,7 +6,7 @@ import {
   type ErrorResponse,
   type OccurrenceResponse,
 } from '@aeroscan/shared'
-import { OccurrencesRepository } from '../src/occurrences/occurrences.repository'
+import { LIST_ORDER, OccurrencesRepository } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
 
 const MINUTE = 60_000
@@ -332,6 +332,23 @@ describe('Occurrences (e2e)', () => {
 
       expect(errorOf(res).message).toBe('siteId deve ser um texto')
     })
+
+    it.each([{}, { status: 'open' }, { siteId: 'site-a' }, { status: 'open', siteId: 'site-a' }])(
+      'filtro %j usa índice e não ordena em memória',
+      async (filter) => {
+        await create()
+
+        const { queryPlanner } = (await t.connection
+          .collection('occurrences')
+          .find(filter)
+          .sort(LIST_ORDER)
+          .explain('queryPlanner')) as { queryPlanner: { winningPlan: unknown } }
+        const plan = JSON.stringify(queryPlanner.winningPlan)
+
+        expect(plan).toContain('"stage":"IXSCAN"')
+        expect(plan).not.toContain('"stage":"SORT"')
+      },
+    )
   })
 
   describe('PATCH /occurrences/:id/status', () => {
