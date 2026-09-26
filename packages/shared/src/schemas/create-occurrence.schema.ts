@@ -3,7 +3,7 @@ import { MAX_SEVERITY, MIN_SEVERITY, OCCURRENCE_TYPES } from '../domain/occurren
 import { oneOf, requestBody, requiredText } from './fields.js'
 
 const severityRange = `severity deve estar entre ${MIN_SEVERITY} e ${MAX_SEVERITY}`
-const isoDate = 'detectedAt deve ser uma data ISO 8601 válida (ex.: 2026-09-25T14:00:00Z)'
+const isoDate = 'detectedAt deve ser uma data ISO 8601 com fuso, como AAAA-MM-DDThh:mm:ssZ'
 
 export const createOccurrenceBodySchema = requestBody({
   siteId: requiredText('siteId'),
