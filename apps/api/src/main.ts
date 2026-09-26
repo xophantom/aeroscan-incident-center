@@ -14,4 +14,8 @@ async function bootstrap(): Promise<void> {
   await app.listen(app.get(AppConfig).port, '0.0.0.0')
 }
 
-void bootstrap()
+bootstrap().catch((error: unknown) => {
+  // O Nest já registrou o erro com o stack; aqui só a causa, sem o dump da rejeição não tratada
+  console.error(`Falha ao iniciar a API: ${error instanceof Error ? error.message : String(error)}`)
+  process.exit(1)
+})
