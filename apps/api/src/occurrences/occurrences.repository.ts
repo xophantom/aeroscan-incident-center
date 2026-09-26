@@ -20,7 +20,7 @@ const LIST_ORDER = { priority: -1, detectedAt: -1, _id: -1 } as const
 
 function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocument> {
   return {
-    ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.status ? { status: { $in: filter.status } } : {}),
     ...(filter.siteId ? { siteId: filter.siteId } : {}),
   }
 }

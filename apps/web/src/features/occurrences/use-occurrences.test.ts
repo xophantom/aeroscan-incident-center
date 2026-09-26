@@ -38,19 +38,16 @@ describe('useOccurrences', () => {
     expect(result.current.state).toMatchObject({ items: [resolvedItem] })
   })
 
-  it('"Ativas" busca sem filtro de status e esconde as resolvidas', async () => {
-    const open = occurrence({ id: 'o' })
-    const acknowledged = occurrence({ id: 'a', status: 'acknowledged' })
-    vi.mocked(listOccurrences).mockResolvedValue([
-      open,
-      acknowledged,
-      occurrence({ id: 'r', status: 'resolved' }),
-    ])
+  it.each([
+    ['active', ['open', 'acknowledged']],
+    ['open', ['open']],
+    ['all', []],
+  ] as const)('filtro %s pede à API os status %j', async (filter, statuses) => {
+    vi.mocked(listOccurrences).mockResolvedValue([])
 
-    const { result } = renderHook(() => useOccurrences('active'))
+    renderHook(() => useOccurrences(filter))
 
-    await waitFor(() => expect(result.current.state).toMatchObject({ items: [open, acknowledged] }))
-    expect(listOccurrences).toHaveBeenCalledWith(undefined)
+    await waitFor(() => expect(listOccurrences).toHaveBeenCalledWith(statuses))
   })
 
   it('falha ao atualizar mantém a lista na tela e avisa', async () => {

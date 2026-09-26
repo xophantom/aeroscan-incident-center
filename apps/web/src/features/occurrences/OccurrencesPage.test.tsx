@@ -30,12 +30,12 @@ describe('OccurrencesPage', () => {
     const user = renderPage()
 
     expect(await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')).toBeInTheDocument()
-    expect(listOccurrences).toHaveBeenLastCalledWith(undefined)
+    expect(listOccurrences).toHaveBeenLastCalledWith(['open', 'acknowledged'])
 
     await user.click(screen.getByRole('button', { name: 'Abertas' }))
 
     expect(await screen.findByText('Nenhuma ocorrência aberta.')).toBeInTheDocument()
-    expect(listOccurrences).toHaveBeenLastCalledWith('open')
+    expect(listOccurrences).toHaveBeenLastCalledWith(['open'])
   })
 
   it('ações em itens diferentes não liberam o botão uma da outra', async () => {
@@ -67,11 +67,11 @@ describe('OccurrencesPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Reconhecer' }))
     await user.click(screen.getByRole('button', { name: 'Abertas' }))
-    await waitFor(() => expect(listOccurrences).toHaveBeenLastCalledWith('open'))
+    await waitFor(() => expect(listOccurrences).toHaveBeenLastCalledWith(['open']))
     acknowledge.resolve({ ...open, status: 'acknowledged' })
 
     await waitFor(() => expect(listOccurrences).toHaveBeenCalledTimes(3))
-    expect(listOccurrences).toHaveBeenLastCalledWith('open')
+    expect(listOccurrences).toHaveBeenLastCalledWith(['open'])
   })
 
   it('falha de rede ao resolver mantém a lista e a nota digitada', async () => {

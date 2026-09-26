@@ -342,6 +342,19 @@ describe('Occurrences (e2e)', () => {
       expect(await list('?status=resolved')).toEqual([])
     })
 
+    it('filtra por mais de um status (parâmetro repetido)', async () => {
+      const acked = await create({ type: 'intrusion' })
+      await create({ type: 'low_battery' })
+      const resolved = await create({ type: 'signal_loss' })
+      await patch(acked.id, { status: 'acknowledged' }).expect(200)
+      await patch(resolved.id, { status: 'acknowledged' }).expect(200)
+      await patch(resolved.id, { status: 'resolved', note: 'ok' }).expect(200)
+
+      const active = await list('?status=open&status=acknowledged')
+
+      expect(active.map((o) => o.status).sort()).toEqual(['acknowledged', 'open'])
+    })
+
     it('filtra por siteId', async () => {
       await create({ siteId: 'site-a' })
       await create({ siteId: 'site-b' })
@@ -369,7 +382,13 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).message).toBe('siteId deve ser um texto')
     })
 
-    it.each(['', '?status=open', '?siteId=site-a', '?status=open&siteId=site-a'])(
+    it.each([
+      '',
+      '?status=open',
+      '?status=open&status=acknowledged',
+      '?siteId=site-a',
+      '?status=open&siteId=site-a',
+    ])(
       'GET /occurrences%s usa índice e não ordena em memória (profiler do Mongo)',
       async (query) => {
         await create()

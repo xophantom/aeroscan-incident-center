@@ -9,9 +9,12 @@ import { apiRequest } from './client'
 
 const occurrenceListSchema = z.array(occurrenceResponseSchema)
 
-export function listOccurrences(status?: OccurrenceStatus): Promise<OccurrenceResponse[]> {
-  const query = status ? `?${new URLSearchParams({ status }).toString()}` : ''
-  return apiRequest(`/occurrences${query}`, occurrenceListSchema)
+/** Sem status, lista todas; com vários, repete o parâmetro (?status=open&status=acknowledged). */
+export function listOccurrences(
+  statuses: readonly OccurrenceStatus[] = [],
+): Promise<OccurrenceResponse[]> {
+  const query = new URLSearchParams(statuses.map((status) => ['status', status])).toString()
+  return apiRequest(`/occurrences${query ? `?${query}` : ''}`, occurrenceListSchema)
 }
 
 export function updateOccurrenceStatus(

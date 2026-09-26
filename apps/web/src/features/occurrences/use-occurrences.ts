@@ -1,4 +1,4 @@
-import type { OccurrenceResponse } from '@aeroscan/shared'
+import type { OccurrenceResponse, OccurrenceStatus } from '@aeroscan/shared'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorMessage } from '../../lib/api/client'
 import { listOccurrences } from '../../lib/api/occurrences'
@@ -8,6 +8,15 @@ export type OccurrencesState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'success'; items: OccurrenceResponse[]; refreshError: string | null }
+
+// Status pedidos à API por filtro da tela; "Todas" não filtra
+const FILTER_STATUSES: Record<StatusFilterValue, readonly OccurrenceStatus[]> = {
+  active: ['open', 'acknowledged'],
+  open: ['open'],
+  acknowledged: ['acknowledged'],
+  resolved: ['resolved'],
+  all: [],
+}
 
 export function useOccurrences(filter: StatusFilterValue) {
   const [state, setState] = useState<OccurrencesState>({ kind: 'loading' })
@@ -22,7 +31,7 @@ export function useOccurrences(filter: StatusFilterValue) {
     setRefreshing(true)
     setState((current) => (current.kind === 'error' ? { kind: 'loading' } : current))
     try {
-      const items = await fetchOccurrences(currentFilter.current)
+      const items = await listOccurrences(FILTER_STATUSES[currentFilter.current])
       if (requestId === latestRequest.current) {
         setState({ kind: 'success', items, refreshError: null })
       }
@@ -47,11 +56,4 @@ export function useOccurrences(filter: StatusFilterValue) {
   }, [filter, refetch])
 
   return { state, refreshing, refetch }
-}
-
-// "Ativas" (abertas e reconhecidas) não é um status da API: busca tudo e esconde as resolvidas
-async function fetchOccurrences(filter: StatusFilterValue): Promise<OccurrenceResponse[]> {
-  const status = filter === 'active' || filter === 'all' ? undefined : filter
-  const items = await listOccurrences(status)
-  return filter === 'active' ? items.filter((item) => item.status !== 'resolved') : items
 }

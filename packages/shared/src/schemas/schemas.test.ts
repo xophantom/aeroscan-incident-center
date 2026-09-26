@@ -87,10 +87,17 @@ describe('listOccurrencesQuerySchema', () => {
     expect(listOccurrencesQuerySchema.parse({})).toEqual({ status: undefined, siteId: undefined })
   })
 
-  it('aceita status e siteId', () => {
+  it('aceita status e siteId; um status vira lista', () => {
     expect(listOccurrencesQuerySchema.parse({ status: 'open', siteId: ' site-a ' })).toEqual({
-      status: 'open',
+      status: ['open'],
       siteId: 'site-a',
+    })
+  })
+
+  it('aceita status repetido (?status=open&status=acknowledged)', () => {
+    expect(listOccurrencesQuerySchema.parse({ status: ['open', 'acknowledged'] })).toEqual({
+      status: ['open', 'acknowledged'],
+      siteId: undefined,
     })
   })
 
@@ -101,11 +108,23 @@ describe('listOccurrencesQuerySchema', () => {
     })
   })
 
-  it('rejeita status desconhecido', () => {
-    const result = listOccurrencesQuerySchema.safeParse({ status: 'closed' })
+  it('rejeita status desconhecido, sozinho ou na lista', () => {
+    const single = listOccurrencesQuerySchema.safeParse({ status: 'closed' })
+    const list = listOccurrencesQuerySchema.safeParse({ status: ['open', 'closed'] })
+
+    expect(messages(single.error)).toEqual({
+      'status.0': 'status deve ser um de: open, acknowledged, resolved',
+    })
+    expect(messages(list.error)).toEqual({
+      'status.1': 'status deve ser um de: open, acknowledged, resolved',
+    })
+  })
+
+  it('rejeita status que não é texto nem lista', () => {
+    const result = listOccurrencesQuerySchema.safeParse({ status: 1 })
 
     expect(messages(result.error)).toEqual({
-      status: 'status deve ser um de: open, acknowledged, resolved',
+      status: 'status deve ser um texto ou uma lista de textos',
     })
   })
 
