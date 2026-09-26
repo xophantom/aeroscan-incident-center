@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { OCCURRENCE_STATUSES, type OccurrenceStatus } from './occurrence.js'
-import { allowedFrom, canTransition, requiresNote } from './status.js'
+import { allowedFrom, canTransition } from './status.js'
 
 const VALID: ReadonlyArray<readonly [OccurrenceStatus, OccurrenceStatus]> = [
   ['open', 'acknowledged'],
@@ -25,15 +25,5 @@ describe('allowedFrom', () => {
     ['resolved', ['acknowledged']],
   ] as const)('%s é alcançado a partir de %j', (to, expected) => {
     expect(allowedFrom(to)).toEqual(expected)
-  })
-})
-
-describe('requiresNote', () => {
-  it.each([
-    ['open', false],
-    ['acknowledged', false],
-    ['resolved', true],
-  ] as const)('%s → %s', (to, expected) => {
-    expect(requiresNote(to)).toBe(expected)
   })
 })

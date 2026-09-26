@@ -2,11 +2,9 @@ import {
   DEDUP_WINDOW_MS,
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
-  OCCURRENCE_STATUSES,
   allowedFrom,
   canTransition,
   isTooFarInFuture,
-  requiresNote,
   isTooOld,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
@@ -73,24 +71,22 @@ export class OccurrencesService {
 
   async changeStatus(id: string, change: UpdateStatusInput): Promise<Occurrence> {
     const from = allowedFrom(change.status)
-    const note = change.status === 'resolved' ? change.note : undefined
-    const complete = !requiresNote(change.status) || note !== undefined
-    // Só repete quando outra requisição levou o status a uma origem válida entre o update e a
-    // leitura. Como o fluxo só avança, isso acontece menos vezes do que há status.
-    for (let attempt = 0; attempt < OCCURRENCE_STATUSES.length; attempt++) {
-      const updated =
-        from.length > 0 && complete ? await this.repository.changeStatus(id, from, change) : null
+    const complete = change.status !== 'resolved' || change.note !== undefined
+    if (from.length > 0 && complete) {
+      const updated = await this.repository.changeStatus(id, from, change)
       if (updated) return updated
-
-      // O update condicional não diz por que falhou: 404, 409 ou, se a transição vale, falta a nota
-      const current = await this.repository.findById(id)
-      if (!current) throw occurrenceNotFound(id)
-      if (!canTransition(current.status, change.status)) {
-        throw invalidStatusTransition(current.status, change.status)
-      }
-      if (!complete) throw resolutionNoteRequired()
     }
 
-    throw writeConflict()
+    // Sem update (destino sem origem ou nota ausente) ou update recusado: a leitura diz o porquê
+    const current = await this.repository.findById(id)
+    if (!current) throw occurrenceNotFound(id)
+    if (!canTransition(current.status, change.status)) {
+      throw invalidStatusTransition(current.status, change.status)
+    }
+    if (!complete) throw resolutionNoteRequired()
+
+    // Outra requisição levou o status a uma origem válida entre o update e a leitura. O status só
+    // avança, então isso não se repete indefinidamente.
+    return this.changeStatus(id, change)
   }
 }
