@@ -10,7 +10,7 @@
     "bootstrap": "pnpm --filter @aeroscan/shared build",
     "build": "pnpm -r build",
     "build:web": "pnpm bootstrap && pnpm --filter @aeroscan/web build && tsx scripts/publish-web.ts",
-    "dev": "pnpm bootstrap && pnpm --parallel --filter @aeroscan/api --filter @aeroscan/web dev",
+    "dev": "pnpm bootstrap && pnpm --parallel --filter @aeroscan/shared --filter @aeroscan/api --filter @aeroscan/web dev",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",

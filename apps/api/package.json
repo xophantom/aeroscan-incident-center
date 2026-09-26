@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch --preserveWatchOutput",
+    "dev": "nest start --watch --preserveWatchOutput --exec \"node --watch\"",
     "start": "node dist/main.js",
     "test": "pnpm test:unit && pnpm test:e2e",
     "test:unit": "jest",
