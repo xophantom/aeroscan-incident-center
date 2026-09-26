@@ -37,10 +37,27 @@ describe('OccurrenceItem: botões por status', () => {
     expect(button('Resolver')).not.toBeInTheDocument()
   })
 
-  it('os botões dizem ao leitor de tela o tipo e o site da ocorrência', () => {
-    renderItem({ status: 'open', type: 'intrusion', siteId: 'hangar-norte' })
+  it.each([
+    ['open', 'Reconhecer'],
+    ['acknowledged', 'Resolver'],
+  ] as const)('%s: "%s" diz ao leitor de tela o tipo e o site', (status, action) => {
+    renderItem({ status, type: 'intrusion', siteId: 'hangar-norte' })
 
-    expect(button('Reconhecer')).toHaveAccessibleDescription(/Intrusão.*Site hangar-norte/)
+    expect(button(action)).toHaveAccessibleDescription(/Intrusão.*Site hangar-norte/)
+  })
+
+  it('o formulário "Resolver" também diz de qual ocorrência é', async () => {
+    const { user } = renderItem({
+      status: 'acknowledged',
+      type: 'intrusion',
+      siteId: 'hangar-norte',
+    })
+
+    await user.click(button('Resolver')!)
+
+    const context = /Intrusão.*Site hangar-norte/
+    expect(screen.getByLabelText('Nota de resolução')).toHaveAccessibleDescription(context)
+    expect(button('Confirmar resolução')).toHaveAccessibleDescription(context)
   })
 
   it('acknowledged: só "Resolver"', () => {

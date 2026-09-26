@@ -7,7 +7,7 @@ import { ResolveForm } from './ResolveForm'
 function renderForm() {
   const onSubmit = vi.fn()
   const onCancel = vi.fn()
-  render(<ResolveForm onSubmit={onSubmit} onCancel={onCancel} />)
+  render(<ResolveForm describedBy="ocorrencia" onSubmit={onSubmit} onCancel={onCancel} />)
   return { onSubmit, onCancel, user: userEvent.setup() }
 }
 

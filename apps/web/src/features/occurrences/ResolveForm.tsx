@@ -5,12 +5,14 @@ import { useForm } from 'react-hook-form'
 import { Button } from '../../components/ui/Button'
 
 interface ResolveFormProps {
+  /** Ids dos elementos que identificam a ocorrência, para o leitor de tela. */
+  describedBy: string
   onSubmit: (note: string) => Promise<void> | void
   onCancel: () => void
 }
 
 /** Nota de resolução validada com o mesmo schema que a API usa no PATCH. */
-export function ResolveForm({ onSubmit, onCancel }: ResolveFormProps) {
+export function ResolveForm({ describedBy, onSubmit, onCancel }: ResolveFormProps) {
   const noteId = useId()
   const errorId = useId()
   const {
@@ -37,7 +39,7 @@ export function ResolveForm({ onSubmit, onCancel }: ResolveFormProps) {
         autoFocus
         placeholder="Ex.: falso positivo; equipe verificou o perímetro."
         aria-invalid={errors.note ? true : undefined}
-        aria-describedby={errors.note ? errorId : undefined}
+        aria-describedby={errors.note ? `${describedBy} ${errorId}` : describedBy}
         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none aria-invalid:border-red-500"
         {...register('note')}
       />
@@ -50,7 +52,7 @@ export function ResolveForm({ onSubmit, onCancel }: ResolveFormProps) {
         <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} aria-describedby={describedBy}>
           Confirmar resolução
         </Button>
       </div>

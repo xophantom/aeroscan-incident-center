@@ -106,7 +106,11 @@ export function OccurrenceItem({
       </div>
 
       {resolving && canResolve && (
-        <ResolveForm onSubmit={resolve} onCancel={() => setResolving(false)} />
+        <ResolveForm
+          describedBy={describedBy}
+          onSubmit={resolve}
+          onCancel={() => setResolving(false)}
+        />
       )}
     </li>
   )
