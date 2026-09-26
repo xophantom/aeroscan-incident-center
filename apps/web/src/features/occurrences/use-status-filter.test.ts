@@ -34,4 +34,13 @@ describe('useStatusFilter', () => {
     act(() => result.current[1]('open'))
     expect(window.location.search).toBe('')
   })
+
+  it('reaplicar o filtro ativo não empilha outra entrada no histórico', () => {
+    const { result } = renderHook(() => useStatusFilter())
+    const before = window.history.length
+
+    act(() => result.current[1]('open'))
+
+    expect(window.history.length).toBe(before)
+  })
 })

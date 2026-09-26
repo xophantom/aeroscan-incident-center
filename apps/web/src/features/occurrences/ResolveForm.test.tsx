@@ -1,3 +1,4 @@
+import { NOTE_MAX_LENGTH } from '@aeroscan/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -41,6 +42,12 @@ describe('ResolveForm', () => {
     await user.click(confirm())
 
     expect(onSubmit).toHaveBeenCalledWith('falso positivo')
+  })
+
+  it('limita a nota ao tamanho aceito pela API', () => {
+    renderForm()
+
+    expect(noteField()).toHaveAttribute('maxlength', String(NOTE_MAX_LENGTH))
   })
 
   it('"Cancelar" fecha sem enviar', async () => {

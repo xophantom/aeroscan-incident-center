@@ -57,7 +57,7 @@ export function OccurrenceItem({
             {repeated && (
               <Badge
                 className="bg-slate-900 text-white"
-                title={`Alerta repetido ${occurrence.count} vezes`}
+                title={`Alerta recebido ${occurrence.count} vezes`}
               >
                 ×{occurrence.count}
               </Badge>

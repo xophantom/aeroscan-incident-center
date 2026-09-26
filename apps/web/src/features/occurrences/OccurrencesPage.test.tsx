@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '../../components/ui/toast/ToastProvider'
+import { ApiError } from '../../lib/api/client'
 import { listOccurrences, updateOccurrenceStatus } from '../../lib/api/occurrences'
 import { deferred, occurrence } from '../../test/fixtures'
 import { OccurrencesPage } from './OccurrencesPage'
@@ -75,5 +76,22 @@ describe('OccurrencesPage', () => {
     await waitFor(() => expect(listOccurrences).toHaveBeenCalledTimes(3))
     expect(listOccurrences).toHaveBeenLastCalledWith(undefined)
     expect(screen.getByText('ok')).toBeInTheDocument()
+  })
+
+  it('409 de transição vira a situação atual da ocorrência (outro gestor agiu antes)', async () => {
+    vi.mocked(listOccurrences).mockResolvedValue([occurrence()])
+    vi.mocked(updateOccurrenceStatus).mockRejectedValue(
+      new ApiError('Transição inválida', 'INVALID_STATUS_TRANSITION', {
+        from: 'acknowledged',
+        to: 'acknowledged',
+      }),
+    )
+    const user = renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Reconhecer' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível: a ocorrência já está reconhecida.',
+    )
   })
 })

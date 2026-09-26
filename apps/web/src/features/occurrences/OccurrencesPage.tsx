@@ -1,14 +1,25 @@
-import type { UpdateStatusBody } from '@aeroscan/shared'
+import { isOccurrenceStatus, type UpdateStatusBody } from '@aeroscan/shared'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/toast/toast-context'
-import { errorMessage } from '../../lib/api/client'
+import { ApiError, errorMessage } from '../../lib/api/client'
 import { updateOccurrenceStatus } from '../../lib/api/occurrences'
-import { STATUS_FILTERS } from './labels'
+import { STATUS_FILTERS, STATUS_LABEL } from './labels'
 import { OccurrenceList } from './OccurrenceList'
 import { StatusFilter } from './StatusFilter'
 import { useOccurrences } from './use-occurrences'
 import { useStatusFilter } from './use-status-filter'
+
+// O 409 da API cita os status em inglês; na tela, vira a situação que o gestor enxerga
+function statusChangeError(error: unknown): string {
+  if (error instanceof ApiError && error.code === 'INVALID_STATUS_TRANSITION') {
+    const from = (error.details as { from?: unknown } | undefined)?.from
+    if (isOccurrenceStatus(from)) {
+      return `Não foi possível: a ocorrência já está ${STATUS_LABEL[from].toLowerCase()}.`
+    }
+  }
+  return errorMessage(error)
+}
 
 export function OccurrencesPage() {
   const [filter, setFilter] = useStatusFilter()
@@ -24,7 +35,7 @@ export function OccurrencesPage() {
       toast.show(success, 'success')
       return true
     } catch (error) {
-      toast.show(errorMessage(error))
+      toast.show(statusChangeError(error))
       return false
     } finally {
       // Com sucesso ou erro (ex.: 409 porque outro gestor já agiu), a lista volta a refletir o

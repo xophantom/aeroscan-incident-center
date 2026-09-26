@@ -27,10 +27,13 @@ export function useStatusFilter() {
     if (next === DEFAULT_FILTER) url.searchParams.delete(PARAM)
     else url.searchParams.set(PARAM, next)
 
-    try {
-      window.history.pushState(null, '', url)
-    } catch {
-      // Alguns navegadores recusam pushState em file://; o filtro segue funcionando em memória
+    // Clicar no filtro que já está ativo não empilha outra entrada no histórico
+    if (url.href !== window.location.href) {
+      try {
+        window.history.pushState(null, '', url)
+      } catch {
+        // Alguns navegadores recusam pushState em file://; o filtro segue funcionando em memória
+      }
     }
     setFilterState(next)
   }, [])

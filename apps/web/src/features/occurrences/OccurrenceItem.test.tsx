@@ -84,7 +84,7 @@ describe('OccurrenceItem: dados exibidos', () => {
   it('mostra ×N quando o alerta se repetiu', () => {
     renderItem({ count: 4 })
 
-    expect(screen.getByText('×4')).toBeInTheDocument()
+    expect(screen.getByText('×4')).toHaveAttribute('title', 'Alerta recebido 4 vezes')
   })
 
   it('não mostra contador quando count = 1', () => {

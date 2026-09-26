@@ -1,4 +1,4 @@
-import { resolveFormSchema } from '@aeroscan/shared'
+import { NOTE_MAX_LENGTH, resolveFormSchema } from '@aeroscan/shared'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useId } from 'react'
 import { useForm } from 'react-hook-form'
@@ -33,6 +33,7 @@ export function ResolveForm({ onSubmit, onCancel }: ResolveFormProps) {
       <textarea
         id={noteId}
         rows={3}
+        maxLength={NOTE_MAX_LENGTH}
         autoFocus
         placeholder="Ex.: falso positivo; equipe verificou o perímetro."
         aria-invalid={errors.note ? true : undefined}
