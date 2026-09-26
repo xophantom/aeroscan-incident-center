@@ -518,6 +518,31 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toEqual({ status: 'ok', mongo: 'up' })
     })
 
+    it('Swagger: filtros da listagem opcionais e erros de corpo documentados', async () => {
+      interface Operation {
+        parameters?: Array<{ name: string; required?: boolean }>
+        responses: Record<string, { description?: string }>
+      }
+      const doc = (await t.http.get('/docs-json').expect(200)).body as {
+        paths: Record<string, Record<string, Operation>>
+      }
+      const list = doc.paths['/occurrences']?.['get']
+      const register = doc.paths['/occurrences']?.['post']
+      const changeStatus = doc.paths['/occurrences/{id}/status']?.['patch']
+
+      expect(list?.parameters?.map((p) => [p.name, p.required ?? false])).toEqual([
+        ['status', false],
+        ['siteId', false],
+      ])
+      expect(Object.keys(register?.responses ?? {})).toEqual(
+        expect.arrayContaining(['200', '201', '400', '409', '413', '415', '422']),
+      )
+      expect(Object.keys(changeStatus?.responses ?? {})).toEqual(
+        expect.arrayContaining(['200', '400', '404', '409', '413', '415', '422']),
+      )
+      expect(changeStatus?.responses['200']?.description).toBeTruthy()
+    })
+
     it('GET / serve o front compilado', async () => {
       const res = await t.http.get('/').expect(200)
 
