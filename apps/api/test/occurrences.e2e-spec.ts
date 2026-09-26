@@ -45,10 +45,14 @@ describe('Occurrences (e2e)', () => {
     }
   }
 
-  const post = (body: object) => t.http.post('/occurrences').send(body)
-  const patch = (id: string, body: object) => t.http.patch(`/occurrences/${id}/status`).send(body)
+  // Toda resposta de sucesso dos helpers passa pelo schema do contrato, o mesmo que o front usa
+  const matchesContract = (res: { status: number; body: unknown }) => {
+    if (res.status < 300) occurrenceResponseSchema.parse(res.body)
+  }
+  const post = (body: object) => t.http.post('/occurrences').send(body).expect(matchesContract)
+  const patch = (id: string, body: object) =>
+    t.http.patch(`/occurrences/${id}/status`).send(body).expect(matchesContract)
 
-  // Os helpers validam as respostas com o schema do contrato, o mesmo que o front usa
   async function list(query = ''): Promise<OccurrenceResponse[]> {
     const res = await t.http.get(`/occurrences${query}`).expect(200)
     return z.array(occurrenceResponseSchema).parse(res.body)
@@ -87,7 +91,7 @@ describe('Occurrences (e2e)', () => {
 
       const res = await post(alert({ droneId: 'drone-2', severity: 1 })).expect(200)
 
-      expect(occurrenceResponseSchema.parse(res.body)).toMatchObject({
+      expect(res.body).toMatchObject({
         id: first.id,
         count: 2,
         severity: 3,
@@ -408,14 +412,14 @@ describe('Occurrences (e2e)', () => {
       const { id } = await create()
 
       const acked = await patch(id, { status: 'acknowledged' }).expect(200)
-      expect(occurrenceResponseSchema.parse(acked.body)).toMatchObject({
+      expect(acked.body).toMatchObject({
         id,
         status: 'acknowledged',
         note: null,
       })
 
       const resolved = await patch(id, { status: 'resolved', note: '  falso alarme  ' }).expect(200)
-      expect(occurrenceResponseSchema.parse(resolved.body)).toMatchObject({
+      expect(resolved.body).toMatchObject({
         id,
         status: 'resolved',
         note: 'falso alarme',
