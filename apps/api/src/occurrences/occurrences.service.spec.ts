@@ -7,6 +7,7 @@ import {
 import { AppException } from '../common/errors/app.exception'
 import type { ClockService } from '../infra/clock/clock.service'
 import type { Occurrence } from './occurrence'
+import type { OccurrenceEvents } from './occurrence-events'
 import { DuplicateAlertError, type OccurrencesRepository } from './occurrences.repository'
 import { MAX_DEDUP_ATTEMPTS, OccurrencesService } from './occurrences.service'
 
@@ -62,9 +63,14 @@ function setup() {
     changeStatus: jest.fn().mockResolvedValue(null),
   }
   const clock: ClockService = { now: () => NOW }
-  const service = new OccurrencesService(repository as unknown as OccurrencesRepository, clock)
+  const events = { publish: jest.fn() }
+  const service = new OccurrencesService(
+    repository as unknown as OccurrencesRepository,
+    clock,
+    events as unknown as OccurrenceEvents,
+  )
 
-  return { service, repository }
+  return { service, repository, events }
 }
 
 const firstCallOrder = (fn: { mock: { invocationCallOrder: number[] } }) =>
@@ -81,22 +87,30 @@ async function appError(promise: Promise<unknown>): Promise<AppException> {
 }
 
 describe('OccurrencesService.register', () => {
-  it('agrupa quando há ocorrência aberta na janela, sem tentar criar', async () => {
-    const { service, repository } = setup()
+  it('agrupa quando há ocorrência aberta na janela, sem tentar criar, e avisa a mudança', async () => {
+    const { service, repository, events } = setup()
     const grouped = occurrence({ count: 2, severity: 3 })
     repository.groupIntoOccurrence.mockResolvedValue(grouped)
 
-    await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
+    await expect(service.register(alert)).resolves.toEqual({
+      occurrence: grouped,
+      outcome: 'grouped',
+    })
     expect(repository.insertAtVersion).not.toHaveBeenCalled()
+    expect(events.publish).toHaveBeenCalledWith({ kind: 'grouped', id: grouped.id })
   })
 
   it('lê a versão antes de buscar e a repassa para o insert', async () => {
-    const { service, repository } = setup()
+    const { service, repository, events } = setup()
     const created = occurrence()
     repository.creationVersion.mockResolvedValue(4)
     repository.insertAtVersion.mockResolvedValue(created)
 
-    await expect(service.register(alert)).resolves.toEqual({ occurrence: created, created: true })
+    await expect(service.register(alert)).resolves.toEqual({
+      occurrence: created,
+      outcome: 'created',
+    })
+    expect(events.publish).toHaveBeenCalledWith({ kind: 'created', id: created.id })
 
     expect(repository.insertAtVersion).toHaveBeenCalledWith(alert, 4, alertKey(alert))
     expect(firstCallOrder(repository.creationVersion)).toBeLessThan(
@@ -109,7 +123,10 @@ describe('OccurrencesService.register', () => {
     const grouped = occurrence({ count: 2 })
     repository.groupIntoOccurrence.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
 
-    await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
+    await expect(service.register(alert)).resolves.toEqual({
+      occurrence: grouped,
+      outcome: 'grouped',
+    })
     expect(repository.creationVersion).toHaveBeenCalledTimes(2)
     expect(repository.insertAtVersion).toHaveBeenCalledTimes(1)
   })
@@ -118,18 +135,20 @@ describe('OccurrencesService.register', () => {
     ['ao agrupar', 'groupIntoOccurrence'],
     ['ao criar', 'insertAtVersion'],
   ] as const)(
-    'reenvio (a chave do alerta já foi contada, recusada %s) devolve a ocorrência dele',
+    'reenvio (a chave do alerta já foi contada, recusada %s) devolve a ocorrência dele, sem aviso',
     async (_case, step) => {
-      const { service, repository } = setup()
+      const { service, repository, events } = setup()
       const counted = occurrence({ count: 2 })
       repository[step].mockRejectedValue(new DuplicateAlertError())
       repository.findByAlertKey.mockResolvedValue(counted)
 
       await expect(service.register(alert)).resolves.toEqual({
         occurrence: counted,
-        created: false,
+        outcome: 'resent',
       })
       expect(repository.findByAlertKey).toHaveBeenCalledWith(alertKey(alert))
+      // Nada mudou: os fronts não precisam recarregar
+      expect(events.publish).not.toHaveBeenCalled()
     },
   )
 
@@ -162,8 +181,8 @@ describe('OccurrencesService.register', () => {
 describe('OccurrencesService.changeStatus', () => {
   const id = '66f4a1c2e4b0a1b2c3d4e5f6'
 
-  it('open → acknowledged: update condicional a partir de open', async () => {
-    const { service, repository } = setup()
+  it('open → acknowledged: update condicional a partir de open, e avisa a mudança', async () => {
+    const { service, repository, events } = setup()
     const updated = occurrence({ status: 'acknowledged' })
     repository.changeStatus.mockResolvedValue(updated)
 
@@ -176,6 +195,7 @@ describe('OccurrencesService.changeStatus', () => {
       NOW,
     )
     expect(repository.findById).not.toHaveBeenCalled()
+    expect(events.publish).toHaveBeenCalledWith({ kind: 'status', id })
   })
 
   it('acknowledged → resolved: exige acknowledged como origem e repassa a nota', async () => {
@@ -222,8 +242,8 @@ describe('OccurrencesService.changeStatus', () => {
     expect(error.getStatus()).toBe(404)
   })
 
-  it('409 com from/to quando o status atual não permite a transição', async () => {
-    const { service, repository } = setup()
+  it('409 com from/to quando o status atual não permite a transição (sem aviso)', async () => {
+    const { service, repository, events } = setup()
     repository.findById.mockResolvedValue(occurrence({ status: 'open' }))
 
     const error = await appError(
@@ -233,6 +253,7 @@ describe('OccurrencesService.changeStatus', () => {
     expect(error.code).toBe('INVALID_STATUS_TRANSITION')
     expect(error.getStatus()).toBe(409)
     expect(error.details).toEqual({ from: 'open', to: 'resolved' })
+    expect(events.publish).not.toHaveBeenCalled()
   })
 
   it('voltar para open nem tenta o update: 409', async () => {

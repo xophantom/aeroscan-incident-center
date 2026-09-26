@@ -14,6 +14,7 @@ import {
   type ErrorResponse,
   type OccurrenceResponse,
 } from '@aeroscan/shared'
+import WebSocket, { type RawData } from 'ws'
 import { z } from 'zod'
 import { OccurrencesRepository } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
@@ -729,6 +730,84 @@ describe('Occurrences (e2e)', () => {
       const res = await t.http.get('/occurrences').set('Origin', 'https://site-qualquer.example')
 
       expect(res.headers['access-control-allow-origin']).toBeUndefined()
+    })
+  })
+
+  describe('avisos em tempo real (WebSocket /events)', () => {
+    interface Change {
+      type: string
+      kind: string
+      id: string
+    }
+
+    function connect(origin?: string): Promise<WebSocket> {
+      return new Promise((resolve, reject) => {
+        const socket = new WebSocket(t.wsUrl, origin === undefined ? {} : { origin })
+        socket.once('open', () => resolve(socket))
+        socket.once('error', reject)
+      })
+    }
+
+    // Junta os avisos até o que satisfaz `until`; como chegam em ordem, isso prova o que veio antes
+    function changesUntil(
+      socket: WebSocket,
+      until: (change: Change) => boolean,
+    ): Promise<Change[]> {
+      return new Promise((resolve) => {
+        const received: Change[] = []
+        // Com o binaryType padrão do ws, cada mensagem chega como Buffer
+        socket.on('message', (data: RawData) => {
+          const change = JSON.parse((data as Buffer).toString('utf8')) as Change
+          received.push(change)
+          if (until(change)) resolve(received)
+        })
+      })
+    }
+
+    it('avisa criação, agrupamento e mudança de status, nessa ordem', async () => {
+      const socket = await connect()
+      try {
+        const received = changesUntil(socket, (change) => change.kind === 'status')
+        const created = await create()
+        await post(alert({ droneId: 'drone-2' })).expect(200)
+        await patch(created.id, { status: 'acknowledged' }).expect(200)
+
+        expect(await received).toEqual([
+          { type: 'occurrences.changed', kind: 'created', id: created.id },
+          { type: 'occurrences.changed', kind: 'grouped', id: created.id },
+          { type: 'occurrences.changed', kind: 'status', id: created.id },
+        ])
+      } finally {
+        socket.close()
+      }
+    })
+
+    it('reenvio e pedido recusado não avisam: nada mudou', async () => {
+      const body = alert()
+      const created = await create()
+      const socket = await connect()
+      try {
+        const received = changesUntil(socket, (change) => change.kind === 'status')
+        await post(body).expect(200)
+        await patch(created.id, { status: 'resolved', note: 'pulando etapa' }).expect(409)
+        await patch(created.id, { status: 'acknowledged' }).expect(200)
+
+        expect(await received).toEqual([
+          { type: 'occurrences.changed', kind: 'status', id: created.id },
+        ])
+      } finally {
+        socket.close()
+      }
+    })
+
+    it('aceita o front aberto via file:// e o servido pela API; recusa outras origens', async () => {
+      const apiOrigin = new URL(t.wsUrl.replace(/^ws/, 'http')).origin
+      for (const origin of ['null', apiOrigin]) (await connect(origin)).close()
+
+      const other = new WebSocket(t.wsUrl, { origin: 'https://site-qualquer.example' })
+      const code = await new Promise<number>((resolve) => other.once('close', resolve))
+
+      expect(code).toBe(1008)
     })
   })
 

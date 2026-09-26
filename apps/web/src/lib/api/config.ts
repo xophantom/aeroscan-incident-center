@@ -10,3 +10,14 @@ export function resolveApiUrl(envUrl: string | undefined, protocol: string): str
 }
 
 export const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL, window.location.protocol)
+
+/** WebSocket de avisos da API: o mesmo endereço, com ws(s) no lugar de http(s). */
+export function resolveEventsUrl(
+  apiUrl: string,
+  location: Pick<Location, 'protocol' | 'host'>,
+): string {
+  const base = apiUrl || `${location.protocol}//${location.host}`
+  return `${base.replace(/^http/, 'ws')}/events`
+}
+
+export const EVENTS_URL = resolveEventsUrl(API_URL, window.location)

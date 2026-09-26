@@ -1,5 +1,6 @@
 // Confere a API no ar do jeito que ela é entregue (build real, não o src que o Jest usa):
-// front servido, health, validação com detalhes por campo, agrupamento, reenvio e o ciclo de status.
+// front servido, health, validação com detalhes por campo, agrupamento, reenvio, ciclo de status e o
+// aviso por WebSocket.
 // Uso: pnpm smoke   (API_URL=http://localhost:3000 por padrão)
 
 const apiUrl = (process.env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
@@ -82,6 +83,43 @@ const checks: Array<[string, () => Promise<void>]> = [
         note: 'smoke test',
       })
       assert(resolved.status === 200, resolved)
+    },
+  ],
+  [
+    'WebSocket /events avisa uma ocorrência criada',
+    async () => {
+      const url = `${apiUrl.replace(/^http/, 'ws')}/events`
+      const socket = new WebSocket(url)
+      try {
+        await new Promise<void>((resolve, reject) => {
+          socket.addEventListener('open', () => resolve(), { once: true })
+          socket.addEventListener('error', () => reject(new Error(`sem conexão em ${url}`)), {
+            once: true,
+          })
+        })
+        const received = new Promise<{ kind?: string; id?: string }>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('nenhum aviso em 3 s')), 3_000)
+          socket.addEventListener(
+            'message',
+            (event) => {
+              clearTimeout(timer)
+              resolve(JSON.parse(String(event.data)) as { kind?: string; id?: string })
+            },
+            { once: true },
+          )
+        })
+        const created = await request('/occurrences', 'POST', {
+          ...alert,
+          siteId: `${alert.siteId}-ws`,
+        })
+        assert(created.status === 201, created)
+        const change = await received
+        if (change.kind !== 'created' || change.id !== (created.body as { id: string }).id) {
+          throw new Error(`aviso inesperado: ${JSON.stringify(change)}`)
+        }
+      } finally {
+        socket.close()
+      }
     },
   ],
 ]

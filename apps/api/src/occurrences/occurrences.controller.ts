@@ -103,8 +103,8 @@ export class OccurrencesController {
     @Body() body: CreateOccurrenceDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<OccurrenceResponse> {
-    const { occurrence, created } = await this.service.register(body)
-    res.status(created ? HttpStatus.CREATED : HttpStatus.OK)
+    const { occurrence, outcome } = await this.service.register(body)
+    res.status(outcome === 'created' ? HttpStatus.CREATED : HttpStatus.OK)
     return toOccurrenceResponse(occurrence)
   }
 

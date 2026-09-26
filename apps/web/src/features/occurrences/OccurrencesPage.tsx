@@ -3,10 +3,12 @@ import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/toast/toast-context'
 import { ApiError, errorMessage } from '../../lib/api/client'
+import type { LiveStatus } from '../../lib/api/events'
 import { updateOccurrenceStatus } from '../../lib/api/occurrences'
 import { STATUS_LABEL } from './labels'
 import { OccurrenceList } from './OccurrenceList'
 import { StatusFilter } from './StatusFilter'
+import { useLiveUpdates } from './use-live-updates'
 import { useOccurrences } from './use-occurrences'
 import { useStatusFilter, type StatusFilterValue } from './use-status-filter'
 
@@ -21,6 +23,29 @@ function statusChangeError(error: unknown): string {
   return errorMessage(error)
 }
 
+const LIVE_LABEL: Record<LiveStatus, string> = {
+  connecting: 'Conectando…',
+  live: 'Ao vivo',
+  offline: 'Reconectando…',
+}
+
+function LiveBadge({ status }: { status: LiveStatus }) {
+  const live = status === 'live'
+  return (
+    <span
+      role="status"
+      title={live ? 'A lista atualiza sozinha quando chegam mudanças' : undefined}
+      className={`inline-flex items-center gap-1.5 text-xs font-medium ${live ? 'text-emerald-700' : 'text-amber-700'}`}
+    >
+      <span
+        aria-hidden
+        className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'bg-amber-500'}`}
+      />
+      {LIVE_LABEL[status]}
+    </span>
+  )
+}
+
 function emptyMessage(filter: StatusFilterValue): string {
   if (filter === 'active') return 'Nenhuma ocorrência aberta ou reconhecida.'
   if (filter === 'all') return 'Nenhuma ocorrência registrada.'
@@ -29,7 +54,8 @@ function emptyMessage(filter: StatusFilterValue): string {
 
 export function OccurrencesPage() {
   const [filter, setFilter] = useStatusFilter()
-  const { state, refreshing, refetch } = useOccurrences(filter)
+  const { state, refreshing, refetch, refetchQuietly } = useOccurrences(filter)
+  const live = useLiveUpdates(refetchQuietly)
   const toast = useToast()
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
 
@@ -64,9 +90,12 @@ export function OccurrencesPage() {
             Mais urgentes primeiro: prioridade = severidade × peso do tipo.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => void refetch()} disabled={refreshing}>
-          {refreshing ? 'Atualizando…' : 'Atualizar'}
-        </Button>
+        <div className="flex items-center gap-4">
+          <LiveBadge status={live} />
+          <Button variant="secondary" onClick={() => void refetch()} disabled={refreshing}>
+            {refreshing ? 'Atualizando…' : 'Atualizar'}
+          </Button>
+        </div>
       </header>
 
       <div className="mb-4">

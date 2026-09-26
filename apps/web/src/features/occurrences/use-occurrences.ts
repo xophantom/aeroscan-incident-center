@@ -26,9 +26,10 @@ export function useOccurrences(filter: StatusFilterValue) {
   // Uma ação iniciada antes da troca de filtro recarrega o filtro que está na tela, não o antigo
   const currentFilter = useRef(filter)
 
-  const refetch = useCallback(async () => {
+  const load = useCallback(async ({ quiet }: { quiet: boolean }) => {
     const requestId = ++latestRequest.current
-    setRefreshing(true)
+    // "Atualizando…" só quando o gestor pede; o aviso da API atualiza em silêncio
+    if (!quiet) setRefreshing(true)
     setState((current) => (current.kind === 'error' ? { kind: 'loading' } : current))
     try {
       const items = await listOccurrences(FILTER_STATUSES[currentFilter.current])
@@ -48,6 +49,8 @@ export function useOccurrences(filter: StatusFilterValue) {
       if (requestId === latestRequest.current) setRefreshing(false)
     }
   }, [])
+  const refetch = useCallback(() => load({ quiet: false }), [load])
+  const refetchQuietly = useCallback(() => void load({ quiet: true }), [load])
 
   useEffect(() => {
     currentFilter.current = filter
@@ -55,5 +58,5 @@ export function useOccurrences(filter: StatusFilterValue) {
     void refetch()
   }, [filter, refetch])
 
-  return { state, refreshing, refetch }
+  return { state, refreshing, refetch, refetchQuietly }
 }

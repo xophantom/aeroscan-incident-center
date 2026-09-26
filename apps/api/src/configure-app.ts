@@ -1,5 +1,6 @@
 import type { NestApplicationOptions } from '@nestjs/common'
 import type { NestExpressApplication } from '@nestjs/platform-express'
+import { WsAdapter } from '@nestjs/platform-ws'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Logger } from 'nestjs-pino'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
@@ -17,6 +18,8 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
   // O padrão (Origin: null) atende o front aberto via file://. Não protege nada: a API não tem
   // autenticação e iframes sandbox também mandam null. Front num domínio próprio: só ele.
   app.enableCors({ origin: app.get(AppConfig).corsOrigins })
+  // WebSocket nativo (ws) na mesma porta: o front usa o WebSocket do navegador, sem biblioteca
+  app.useWebSocketAdapter(new WsAdapter(app))
   app.enableShutdownHooks()
 
   const document = SwaggerModule.createDocument(
@@ -25,7 +28,8 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
       .setTitle('AeroScan · Triagem de Ocorrências')
       .setDescription(
         'Erros das rotas de ocorrências no envelope { error: { code, message, details? } }; ' +
-          'o /health responde { status, mongo }.',
+          'o /health responde { status, mongo }. Mudanças nas ocorrências são avisadas por ' +
+          'WebSocket em /events: { type: "occurrences.changed", kind, id }.',
       )
       .setVersion('1.0')
       .build(),

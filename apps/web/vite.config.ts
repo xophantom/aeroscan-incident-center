@@ -31,7 +31,11 @@ export default defineConfig({
   server: {
     port: 5173,
     // Em dev o front usa "mesma origem"; o Vite repassa para a API
-    proxy: { '/occurrences': 'http://localhost:3000', '/health': 'http://localhost:3000' },
+    proxy: {
+      '/occurrences': 'http://localhost:3000',
+      '/health': 'http://localhost:3000',
+      '/events': { target: 'ws://localhost:3000', ws: true },
+    },
   },
   test: {
     environment: 'jsdom',

@@ -14,6 +14,7 @@ import {
 import { Injectable } from '@nestjs/common'
 import { ClockService } from '../infra/clock/clock.service'
 import type { Occurrence } from './occurrence'
+import { OccurrenceEvents } from './occurrence-events'
 import {
   detectedAtInFuture,
   detectedAtTooOld,
@@ -33,7 +34,8 @@ export const MAX_DEDUP_ATTEMPTS = MAX_CONCURRENT_CREATIONS + 1
 
 interface RegisterResult {
   occurrence: Occurrence
-  created: boolean
+  /** resent: o mesmo alerta de novo, que não muda nada */
+  outcome: 'created' | 'grouped' | 'resent'
 }
 
 @Injectable()
@@ -41,6 +43,7 @@ export class OccurrencesService {
   constructor(
     private readonly repository: OccurrencesRepository,
     private readonly clock: ClockService,
+    private readonly events: OccurrenceEvents,
   ) {}
 
   /**
@@ -61,14 +64,14 @@ export class OccurrencesService {
       for (let attempt = 1; attempt <= MAX_DEDUP_ATTEMPTS; attempt++) {
         const version = await this.repository.creationVersion(alert)
         const grouped = await this.repository.groupIntoOccurrence(alert, key)
-        if (grouped) return { occurrence: grouped, created: false }
+        if (grouped) return this.changed({ occurrence: grouped, outcome: 'grouped' })
 
         const created = await this.repository.insertAtVersion(alert, version, key)
-        if (created) return { occurrence: created, created: true }
+        if (created) return this.changed({ occurrence: created, outcome: 'created' })
       }
     } catch (error) {
       if (!(error instanceof DuplicateAlertError)) throw error
-      return { occurrence: await this.repository.findByAlertKey(key), created: false }
+      return { occurrence: await this.repository.findByAlertKey(key), outcome: 'resent' }
     }
 
     throw writeConflict()
@@ -83,7 +86,10 @@ export class OccurrencesService {
     const complete = change.status !== 'resolved' || change.note !== undefined
     if (from.length > 0 && complete) {
       const updated = await this.repository.changeStatus(id, from, change, this.clock.now())
-      if (updated) return updated
+      if (updated) {
+        this.events.publish({ kind: 'status', id })
+        return updated
+      }
     }
 
     // Sem update (destino sem origem ou nota ausente) ou update recusado: a leitura diz o porquê
@@ -97,5 +103,10 @@ export class OccurrencesService {
     // Outra requisição levou o status a uma origem válida entre o update e a leitura. O status só
     // avança, então isso não se repete indefinidamente.
     return this.changeStatus(id, change)
+  }
+
+  private changed(result: RegisterResult & { outcome: 'created' | 'grouped' }): RegisterResult {
+    this.events.publish({ kind: result.outcome, id: result.occurrence.id })
+    return result
   }
 }
