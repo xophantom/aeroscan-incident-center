@@ -637,6 +637,26 @@ describe('Occurrences (e2e)', () => {
       ])
     })
 
+    it('o recálculo do boot deixa de fora tipo que o código não conhece (versão revertida)', async () => {
+      await create({ siteId: 'site-a' })
+      await create({ siteId: 'site-b', type: 'intrusion', severity: 2 })
+      const occurrences = t.connection.collection('occurrences')
+      // Gravada por uma versão com um tipo a mais, que foi revertida
+      await occurrences.updateOne({ siteId: 'site-a' }, { $set: { type: 'removed', priority: 12 } })
+      await occurrences.updateOne({ siteId: 'site-b' }, { $set: { priority: 99 } })
+
+      await t.app.get(OccurrencesRepository).onModuleInit()
+
+      const saved = await occurrences
+        .find({}, { projection: { _id: 0, siteId: 1, priority: 1 } })
+        .sort({ siteId: 1 })
+        .toArray()
+      expect(saved).toEqual([
+        { siteId: 'site-a', priority: 12 },
+        { siteId: 'site-b', priority: 6 },
+      ])
+    })
+
     it('a prioridade recalculada no Mongo bate com computePriority em todo tipo', async () => {
       for (const type of OCCURRENCE_TYPES) {
         for (let severity = MIN_SEVERITY; severity < MAX_SEVERITY; severity++) {

@@ -55,11 +55,17 @@ export class OccurrencesRepository implements OnModuleInit {
 
   /**
    * `priority` é denormalizado: se os pesos mudarem, recalcula só as ocorrências divergentes. É
-   * manutenção, não um evento da ocorrência, então não mexe no `updatedAt`.
+   * manutenção, não um evento da ocorrência, então não mexe no `updatedAt`. Um tipo que o código
+   * não conhece (gravado por uma versão revertida) fica de fora: o `$switch` não tem peso para ele,
+   * e o `$and` para no primeiro falso, antes do cálculo.
    */
   async reconcilePriorities(): Promise<void> {
     await this.model.updateMany(
-      { $expr: { $ne: ['$priority', PRIORITY_EXPRESSION] } },
+      {
+        $expr: {
+          $and: [{ $in: ['$type', OCCURRENCE_TYPES] }, { $ne: ['$priority', PRIORITY_EXPRESSION] }],
+        },
+      },
       [{ $set: { priority: PRIORITY_EXPRESSION } }],
       { timestamps: false },
     )
