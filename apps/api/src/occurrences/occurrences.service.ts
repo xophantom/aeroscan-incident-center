@@ -24,7 +24,7 @@ import { OccurrencesRepository } from './occurrences.repository'
 // mesmo tempo (ex.: drone despejando alertas atrasados), um alerta precisa de até N tentativas
 export const MAX_DEDUP_ATTEMPTS = 10
 
-export interface RegisterResult {
+interface RegisterResult {
   occurrence: Occurrence
   created: boolean
 }

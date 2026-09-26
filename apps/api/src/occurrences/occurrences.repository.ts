@@ -16,9 +16,9 @@ import type { Occurrence } from './occurrence'
 import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from './occurrence.schema'
 
 /** Prioridade desc; empate → detecção mais recente; por fim `_id`, para a ordem ser estável. */
-export const LIST_ORDER = { priority: -1, detectedAt: -1, _id: -1 } as const
+const LIST_ORDER = { priority: -1, detectedAt: -1, _id: -1 } as const
 
-export function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocument> {
+function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocument> {
   return {
     ...(filter.status ? { status: filter.status } : {}),
     ...(filter.siteId ? { siteId: filter.siteId } : {}),
@@ -26,7 +26,7 @@ export function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocu
 }
 
 // severity × peso do tipo calculado pelo Mongo (a mesma fórmula de computePriority)
-export const PRIORITY_EXPRESSION = {
+const PRIORITY_EXPRESSION = {
   $multiply: [
     '$severity',
     {

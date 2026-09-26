@@ -1,8 +1,4 @@
-import {
-  STATUS_TRANSITIONS,
-  type OccurrenceResponse,
-  type OccurrenceStatus,
-} from '@aeroscan/shared'
+import { canTransition, type OccurrenceResponse, type OccurrenceStatus } from '@aeroscan/shared'
 import { useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -31,7 +27,8 @@ export function OccurrenceItem({
   onResolve,
 }: OccurrenceItemProps) {
   const [resolving, setResolving] = useState(false)
-  const next = STATUS_TRANSITIONS[occurrence.status]
+  const canAcknowledge = canTransition(occurrence.status, 'acknowledged')
+  const canResolve = canTransition(occurrence.status, 'resolved')
   const repeated = occurrence.count > 1
 
   async function resolve(note: string) {
@@ -82,12 +79,12 @@ export function OccurrenceItem({
         </div>
 
         <div className="shrink-0">
-          {next.includes('acknowledged') && (
+          {canAcknowledge && (
             <Button onClick={() => onAcknowledge(occurrence.id)} disabled={busy}>
               Reconhecer
             </Button>
           )}
-          {next.includes('resolved') && !resolving && (
+          {canResolve && !resolving && (
             <Button onClick={() => setResolving(true)} disabled={busy}>
               Resolver
             </Button>
@@ -95,7 +92,7 @@ export function OccurrenceItem({
         </div>
       </div>
 
-      {resolving && next.includes('resolved') && (
+      {resolving && canResolve && (
         <ResolveForm onSubmit={resolve} onCancel={() => setResolving(false)} />
       )}
     </li>

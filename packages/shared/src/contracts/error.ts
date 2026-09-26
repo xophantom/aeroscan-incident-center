@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const ERROR_CODES = [
+const ERROR_CODES = [
   'VALIDATION_ERROR',
   'BAD_REQUEST',
   'PAYLOAD_TOO_LARGE',

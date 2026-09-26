@@ -11,19 +11,10 @@ import {
   occurrenceResponseSchema,
   type CreateOccurrenceBody,
   type ErrorResponse,
-  type OccurrenceFilter,
   type OccurrenceResponse,
 } from '@aeroscan/shared'
-import { getModelToken } from '@nestjs/mongoose'
-import type { Model } from 'mongoose'
 import { z } from 'zod'
-import { OCCURRENCE_MODEL, type OccurrenceDocument } from '../src/occurrences/occurrence.schema'
-import {
-  LIST_ORDER,
-  OccurrencesRepository,
-  PRIORITY_EXPRESSION,
-  listFilter,
-} from '../src/occurrences/occurrences.repository'
+import { OccurrencesRepository } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
 
 const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE_MS).toISOString()
@@ -381,24 +372,28 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).message).toBe('siteId deve ser um texto')
     })
 
-    it.each<OccurrenceFilter>([
-      {},
-      { status: 'open' },
-      { siteId: 'site-a' },
-      { status: 'open', siteId: 'site-a' },
-    ])('filtro %j usa índice e não ordena em memória', async (filter) => {
-      await create()
-      const model = t.app.get<Model<OccurrenceDocument>>(getModelToken(OCCURRENCE_MODEL))
+    it.each(['', '?status=open', '?siteId=site-a', '?status=open&siteId=site-a'])(
+      'GET /occurrences%s usa índice e não ordena em memória (profiler do Mongo)',
+      async (query) => {
+        await create()
+        const db = t.connection.db
+        if (!db) throw new Error('sem conexão com o Mongo')
 
-      const explain = (await model
-        .find(listFilter(filter))
-        .sort(LIST_ORDER)
-        .explain('queryPlanner')) as unknown as { queryPlanner: { winningPlan: unknown } }
-      const plan = JSON.stringify(explain.queryPlanner.winningPlan)
+        await db.command({ profile: 2 })
+        await list(query)
+        await db.command({ profile: 0 })
+        const [listQuery] = await db
+          .collection('system.profile')
+          .find({ ns: `${db.databaseName}.occurrences`, op: 'query' })
+          .sort({ ts: -1 })
+          .limit(1)
+          .toArray()
+        await db.collection('system.profile').drop()
 
-      expect(plan).toContain('"stage":"IXSCAN"')
-      expect(plan).not.toContain('"stage":"SORT"')
-    })
+        expect(listQuery?.planSummary).toMatch(/^IXSCAN/)
+        expect(listQuery?.hasSortStage).toBeFalsy()
+      },
+    )
 
     it('empate total (prioridade e detecção): a criada por último primeiro, em ordem estável', async () => {
       const older = await create({ siteId: 'site-a' })
@@ -537,26 +532,17 @@ describe('Occurrences (e2e)', () => {
       ])
     })
 
-    it('a fórmula no Mongo bate com computePriority em todo tipo e severidade', async () => {
-      const cases = OCCURRENCE_TYPES.flatMap((type) =>
-        Array.from({ length: MAX_SEVERITY - MIN_SEVERITY + 1 }, (_, i) => ({
-          type,
-          severity: MIN_SEVERITY + i,
-        })),
-      )
-      const db = t.connection.db
-      if (!db) throw new Error('sem conexão com o Mongo')
+    it('a prioridade recalculada no Mongo bate com computePriority em todo tipo', async () => {
+      for (const type of OCCURRENCE_TYPES) {
+        for (let severity = MIN_SEVERITY; severity < MAX_SEVERITY; severity++) {
+          const siteId = `formula-${type}-${severity}`
+          await create({ siteId, type, severity })
 
-      const rows = await db
-        .aggregate<{ priority: number }>([
-          { $documents: cases },
-          { $set: { priority: PRIORITY_EXPRESSION } },
-        ])
-        .toArray()
+          const res = await post(alert({ siteId, type, severity })).expect(200)
 
-      expect(rows.map((row) => row.priority)).toEqual(
-        cases.map(({ type, severity }) => computePriority(severity, type)),
-      )
+          expect(res.body).toMatchObject({ priority: computePriority(severity + 1, type) })
+        }
+      }
     })
   })
 

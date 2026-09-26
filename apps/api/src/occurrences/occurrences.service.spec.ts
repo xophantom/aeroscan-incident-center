@@ -37,12 +37,7 @@ function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
 type RepositoryMock = jest.Mocked<
   Pick<
     OccurrencesRepository,
-    | 'creationVersion'
-    | 'groupIntoOpenOccurrence'
-    | 'insertAtVersion'
-    | 'list'
-    | 'findById'
-    | 'changeStatus'
+    'creationVersion' | 'groupIntoOpenOccurrence' | 'insertAtVersion' | 'findById' | 'changeStatus'
   >
 >
 
@@ -51,7 +46,6 @@ function setup() {
     creationVersion: jest.fn().mockResolvedValue(0),
     groupIntoOpenOccurrence: jest.fn().mockResolvedValue(null),
     insertAtVersion: jest.fn().mockResolvedValue(null),
-    list: jest.fn().mockResolvedValue([]),
     findById: jest.fn().mockResolvedValue(null),
     changeStatus: jest.fn().mockResolvedValue(null),
   }
@@ -198,16 +192,5 @@ describe('OccurrencesService.changeStatus', () => {
 
     expect(repository.changeStatus).not.toHaveBeenCalled()
     expect(error.details).toEqual({ from: 'acknowledged', to: 'open' })
-  })
-})
-
-describe('OccurrencesService.list', () => {
-  it('repassa os filtros ao repository', async () => {
-    const { service, repository } = setup()
-    const items = [occurrence()]
-    repository.list.mockResolvedValue(items)
-
-    await expect(service.list({ status: 'open', siteId: 'site-a' })).resolves.toBe(items)
-    expect(repository.list).toHaveBeenCalledWith({ status: 'open', siteId: 'site-a' })
   })
 })
