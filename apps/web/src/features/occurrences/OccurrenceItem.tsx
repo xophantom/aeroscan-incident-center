@@ -1,5 +1,5 @@
 import { canTransition, type OccurrenceResponse, type OccurrenceStatus } from '@aeroscan/shared'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { STATUS_LABEL, TYPE_LABEL, formatDateTime } from './labels'
@@ -27,6 +27,9 @@ export function OccurrenceItem({
   onResolve,
 }: OccurrenceItemProps) {
   const [resolving, setResolving] = useState(false)
+  const baseId = useId()
+  // Os botões se repetem na lista: tipo e site dizem ao leitor de tela de qual ocorrência são
+  const describedBy = `${baseId}-type ${baseId}-site`
   const canAcknowledge = canTransition(occurrence.status, 'acknowledged')
   const canResolve = canTransition(occurrence.status, 'resolved')
   const repeated = occurrence.count > 1
@@ -49,7 +52,9 @@ export function OccurrenceItem({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold text-slate-900">{TYPE_LABEL[occurrence.type]}</h2>
+            <h2 id={`${baseId}-type`} className="font-semibold text-slate-900">
+              {TYPE_LABEL[occurrence.type]}
+            </h2>
             <SeverityBadge severity={occurrence.severity} />
             {repeated && (
               <Badge
@@ -63,7 +68,7 @@ export function OccurrenceItem({
               {STATUS_LABEL[occurrence.status]}
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-slate-600">
+          <p id={`${baseId}-site`} className="mt-1 text-sm text-slate-600">
             Site <strong className="font-medium text-slate-800">{occurrence.siteId}</strong> ·{' '}
             {occurrence.droneIds.length > 1 ? 'Drones' : 'Drone'} {occurrence.droneIds.join(', ')}
           </p>
@@ -80,12 +85,20 @@ export function OccurrenceItem({
 
         <div className="shrink-0">
           {canAcknowledge && (
-            <Button onClick={() => onAcknowledge(occurrence.id)} disabled={busy}>
+            <Button
+              onClick={() => onAcknowledge(occurrence.id)}
+              disabled={busy}
+              aria-describedby={describedBy}
+            >
               Reconhecer
             </Button>
           )}
           {canResolve && !resolving && (
-            <Button onClick={() => setResolving(true)} disabled={busy}>
+            <Button
+              onClick={() => setResolving(true)}
+              disabled={busy}
+              aria-describedby={describedBy}
+            >
               Resolver
             </Button>
           )}

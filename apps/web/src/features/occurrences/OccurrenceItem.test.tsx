@@ -37,6 +37,12 @@ describe('OccurrenceItem: botões por status', () => {
     expect(button('Resolver')).not.toBeInTheDocument()
   })
 
+  it('os botões dizem ao leitor de tela o tipo e o site da ocorrência', () => {
+    renderItem({ status: 'open', type: 'intrusion', siteId: 'hangar-norte' })
+
+    expect(button('Reconhecer')).toHaveAccessibleDescription(/Intrusão.*Site hangar-norte/)
+  })
+
   it('acknowledged: só "Resolver"', () => {
     renderItem({ status: 'acknowledged' })
 
