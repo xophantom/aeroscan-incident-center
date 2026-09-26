@@ -93,6 +93,9 @@ export class OccurrencesRepository implements OnModuleInit {
               count: { $add: ['$count', 1] },
               severity: { $min: [{ $add: ['$severity', 1] }, MAX_SEVERITY] },
               lastDetectedAt: { $max: ['$lastDetectedAt', alert.detectedAt] },
+              droneIds: {
+                $sortArray: { input: { $setUnion: ['$droneIds', [alert.droneId]] }, sortBy: 1 },
+              },
             },
           },
           { $set: { priority: PRIORITY_EXPRESSION } },
@@ -113,6 +116,7 @@ export class OccurrencesRepository implements OnModuleInit {
       const doc = await this.model.create({
         siteId: alert.siteId,
         droneId: alert.droneId,
+        droneIds: [alert.droneId],
         type: alert.type,
         severity: alert.severity,
         priority: computePriority(alert.severity, alert.type),

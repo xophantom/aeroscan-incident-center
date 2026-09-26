@@ -5,6 +5,7 @@ export const occurrenceResponseSchema = z.object({
   id: z.string(),
   siteId: z.string(),
   droneId: z.string(),
+  droneIds: z.array(z.string()),
   type: z.enum(OCCURRENCE_TYPES),
   severity: z.number().int(),
   priority: z.number().int(),

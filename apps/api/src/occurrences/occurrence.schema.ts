@@ -15,6 +15,7 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
   {
     siteId: { type: String, required: true },
     droneId: { type: String, required: true },
+    droneIds: { type: [String], required: true },
     type: { type: String, enum: OCCURRENCE_TYPES, required: true },
     severity: { type: Number, min: MIN_SEVERITY, max: MAX_SEVERITY, required: true },
     // severity × peso do tipo, denormalizado para ordenar no banco

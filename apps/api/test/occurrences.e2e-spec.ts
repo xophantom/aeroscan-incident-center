@@ -97,6 +97,7 @@ describe('Occurrences (e2e)', () => {
         severity: 3,
         priority: 9,
         droneId: 'drone-1',
+        droneIds: ['drone-1', 'drone-2'],
         detectedAt: T0.toISOString(),
         lastDetectedAt: t.clock.now().toISOString(),
       })

@@ -7,6 +7,7 @@ export function toOccurrenceResponse(occurrence: Occurrence): OccurrenceResponse
     id: occurrence.id,
     siteId: occurrence.siteId,
     droneId: occurrence.droneId,
+    droneIds: occurrence.droneIds,
     type: occurrence.type,
     severity: occurrence.severity,
     priority: occurrence.priority,

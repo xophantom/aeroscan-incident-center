@@ -87,6 +87,12 @@ describe('OccurrenceItem: dados exibidos', () => {
     expect(screen.getByText('×4')).toHaveAttribute('title', 'Alerta recebido 4 vezes')
   })
 
+  it('lista todos os drones que reportaram', () => {
+    renderItem({ count: 2, droneIds: ['drone-1', 'drone-2'] })
+
+    expect(screen.getByText(/Drones drone-1, drone-2/)).toBeInTheDocument()
+  })
+
   it('não mostra contador quando count = 1', () => {
     renderItem({ count: 1 })
 

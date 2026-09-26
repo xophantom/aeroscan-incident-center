@@ -29,6 +29,7 @@ describe('occurrenceResponseSchema', () => {
     id: '66f4a1c2e4b0a1b2c3d4e5f6',
     siteId: 'site-a',
     droneId: 'drone-1',
+    droneIds: ['drone-1'],
     type: 'intrusion',
     severity: 3,
     priority: 9,

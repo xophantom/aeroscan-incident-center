@@ -64,8 +64,8 @@ export function OccurrenceItem({
             </Badge>
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Site <strong className="font-medium text-slate-800">{occurrence.siteId}</strong> · Drone{' '}
-            {occurrence.droneId}
+            Site <strong className="font-medium text-slate-800">{occurrence.siteId}</strong> ·{' '}
+            {occurrence.droneIds.length > 1 ? 'Drones' : 'Drone'} {occurrence.droneIds.join(', ')}
           </p>
           <p className="text-xs text-slate-500">
             Detectada em {formatDateTime(occurrence.detectedAt)}
