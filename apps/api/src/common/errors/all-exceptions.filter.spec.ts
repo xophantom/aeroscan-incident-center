@@ -48,6 +48,7 @@ describe('AllExceptionsFilter', () => {
     expect(response.statusCode).toBe(503)
     expect(response.headers).toEqual({ 'Retry-After': '1' })
     expect(response.body).toEqual({ error: { code: 'WRITE_CONFLICT', message: 'tente de novo' } })
+    expect(logger.warn).toHaveBeenCalledWith('WRITE_CONFLICT: tente de novo')
   })
 
   it('http-errors do body-parser mantêm o status 4xx', () => {
