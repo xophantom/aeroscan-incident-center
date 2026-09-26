@@ -1,5 +1,6 @@
 import {
   MAX_SEVERITY,
+  OCCURRENCE_TYPES,
   TYPE_WEIGHT,
   computePriority,
   dedupWindowStart,
@@ -17,6 +18,22 @@ import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from '
 /** Prioridade desc; empate → detecção mais recente primeiro. */
 export const LIST_ORDER = { priority: -1, detectedAt: -1 } as const
 
+// severity × peso do tipo calculado pelo Mongo (a mesma fórmula de computePriority)
+const PRIORITY_EXPRESSION = {
+  $multiply: [
+    '$severity',
+    {
+      $switch: {
+        branches: OCCURRENCE_TYPES.map((type) => ({
+          case: { $eq: ['$type', type] },
+          then: TYPE_WEIGHT[type],
+        })),
+        default: 0, // tipo que saiu do enum não derruba o boot
+      },
+    },
+  ],
+}
+
 /** Único ponto que conhece Mongoose. */
 @Injectable()
 export class OccurrencesRepository implements OnModuleInit {
@@ -25,6 +42,14 @@ export class OccurrencesRepository implements OnModuleInit {
   // O índice único parcial é parte da corretude do dedup: precisa existir antes da 1ª requisição
   async onModuleInit(): Promise<void> {
     await this.model.syncIndexes()
+    await this.reconcilePriorities()
+  }
+
+  /** `priority` é denormalizado: se os pesos mudarem, recalcula só as ocorrências divergentes. */
+  async reconcilePriorities(): Promise<void> {
+    await this.model.updateMany({ $expr: { $ne: ['$priority', PRIORITY_EXPRESSION] } }, [
+      { $set: { priority: PRIORITY_EXPRESSION } },
+    ])
   }
 
   /**
@@ -50,7 +75,7 @@ export class OccurrencesRepository implements OnModuleInit {
               lastDetectedAt: { $max: ['$lastDetectedAt', alert.detectedAt] },
             },
           },
-          { $set: { priority: { $multiply: ['$severity', TYPE_WEIGHT[alert.type]] } } },
+          { $set: { priority: PRIORITY_EXPRESSION } },
         ],
         { new: true, sort: { detectedAt: 1 } },
       )

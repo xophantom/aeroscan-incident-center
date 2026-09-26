@@ -431,6 +431,17 @@ describe('Occurrences (e2e)', () => {
     })
   })
 
+  describe('prioridade denormalizada', () => {
+    it('o boot recalcula prioridades gravadas com peso desatualizado', async () => {
+      const created = await create({ type: 'intrusion', severity: 2 })
+      await t.connection.collection('occurrences').updateOne({}, { $set: { priority: 99 } })
+
+      await t.app.get(OccurrencesRepository).reconcilePriorities()
+
+      expect(await list()).toMatchObject([{ id: created.id, priority: 6 }])
+    })
+  })
+
   describe('infra', () => {
     it('GET /health reporta o Mongo', async () => {
       const res = await t.http.get('/health').expect(200)
