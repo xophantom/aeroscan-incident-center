@@ -2,6 +2,7 @@ export * from './domain/occurrence.js'
 export * from './domain/priority.js'
 export * from './domain/status.js'
 export * from './domain/dedup.js'
+export * from './domain/time.js'
 
 export * from './schemas/create-occurrence.schema.js'
 export * from './schemas/list-occurrences.schema.js'

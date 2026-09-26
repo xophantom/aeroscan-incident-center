@@ -1,4 +1,6 @@
-export const DEDUP_WINDOW_MS = 10 * 60 * 1000
+import { MINUTE_MS } from './time.js'
+
+export const DEDUP_WINDOW_MS = 10 * MINUTE_MS
 
 /**
  * Uma ocorrência aberta agrupa o alerta se foi detectada a partir deste instante.

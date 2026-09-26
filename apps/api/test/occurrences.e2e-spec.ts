@@ -1,7 +1,9 @@
 import {
   DEDUP_WINDOW_MS,
+  HOUR_MS,
   MAX_ALERT_AGE_MS,
   MAX_SEVERITY,
+  MINUTE_MS,
   type CreateOccurrenceBody,
   type ErrorResponse,
   type OccurrenceResponse,
@@ -9,8 +11,7 @@ import {
 import { LIST_ORDER, OccurrencesRepository } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
 
-const MINUTE = 60_000
-const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE).toISOString()
+const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE_MS).toISOString()
 
 describe('Occurrences (e2e)', () => {
   let t: TestApp
@@ -75,7 +76,7 @@ describe('Occurrences (e2e)', () => {
 
     it('agrupa alerta repetido na janela: 200, count +1, severity +1, prioridade recalculada', async () => {
       const first = await create({ severity: 2 })
-      t.clock.advance(5 * MINUTE)
+      t.clock.advance(5 * MINUTE_MS)
 
       const res = await post(alert({ droneId: 'drone-2', severity: 1 })).expect(200)
 
@@ -98,7 +99,7 @@ describe('Occurrences (e2e)', () => {
       await post(alert()).expect(200)
     })
 
-    it('fora da janela (relógio avançado) abre nova ocorrência, que passa a agrupar', async () => {
+    it('10 min + 1 s depois abre nova ocorrência, que passa a agrupar', async () => {
       const first = await create()
       t.clock.advance(DEDUP_WINDOW_MS + 1_000)
 
@@ -140,13 +141,13 @@ describe('Occurrences (e2e)', () => {
     it('422 para detectedAt além de 1 min no futuro; aceita dentro da tolerância', async () => {
       const future = (ms: number) => new Date(T0.getTime() + ms).toISOString()
 
-      const res = await post(alert({ detectedAt: future(MINUTE + 1_000) })).expect(422)
+      const res = await post(alert({ detectedAt: future(MINUTE_MS + 1_000) })).expect(422)
       expect(errorOf(res)).toMatchObject({
         code: 'VALIDATION_ERROR',
         message: 'detectedAt não pode estar mais de 1 min no futuro',
       })
 
-      await post(alert({ detectedAt: future(MINUTE) })).expect(201)
+      await post(alert({ detectedAt: future(MINUTE_MS) })).expect(201)
     })
 
     it('422 para detectedAt com mais de 24 h de atraso; aceita no limite', async () => {
@@ -163,7 +164,7 @@ describe('Occurrences (e2e)', () => {
 
     it('corrida fora de ordem: agrupa na ocorrência aberta mesmo após outra requisição liberar a vaga dela', async () => {
       const first = await create()
-      t.clock.advance(20 * MINUTE)
+      t.clock.advance(20 * MINUTE_MS)
       // Passo intermediário de um alerta de T0+20 min: a vaga ativa de `first` venceu para ele
       await t.app.get(OccurrencesRepository).closeStaleActiveWindow({
         siteId: 'site-a',
@@ -180,7 +181,7 @@ describe('Occurrences (e2e)', () => {
 
     it('alerta fora de ordem agrupa na ocorrência cuja janela o contém, não na mais recente', async () => {
       const first = await create()
-      t.clock.advance(15 * MINUTE)
+      t.clock.advance(15 * MINUTE_MS)
       const second = await create()
 
       const res = await post(alert({ detectedAt: at(5) })).expect(200)
@@ -191,7 +192,7 @@ describe('Occurrences (e2e)', () => {
 
     it('alerta atrasado (dentro de 24 h) agrupa na ocorrência aberta do site+tipo', async () => {
       const open = await create()
-      const late = new Date(T0.getTime() - 3 * 60 * MINUTE).toISOString()
+      const late = new Date(T0.getTime() - 3 * HOUR_MS).toISOString()
 
       const res = await post(alert({ detectedAt: late })).expect(200)
 
@@ -278,7 +279,7 @@ describe('Occurrences (e2e)', () => {
 
   describe('GET /occurrences', () => {
     it('ordena por prioridade desc; no empate, a detecção mais recente primeiro', async () => {
-      t.clock.advance(10 * MINUTE)
+      t.clock.advance(10 * MINUTE_MS)
 
       // Exemplo do enunciado: intrusion 3 (9) > perimeter_breach 4 (8) > low_battery 5 (5)
       await create({ type: 'low_battery', severity: 5, detectedAt: at(1) })

@@ -1,14 +1,13 @@
 import {
+  HOUR_MS,
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
+  MINUTE_MS,
   STATUS_TRANSITIONS,
   type OccurrenceStatus,
 } from '@aeroscan/shared'
 import { HttpStatus } from '@nestjs/common'
 import { AppException } from '../common/errors/app.exception'
-
-const MINUTE_MS = 60 * 1000
-const HOUR_MS = 60 * MINUTE_MS
 
 export function occurrenceNotFound(id: string): AppException {
   return new AppException(
