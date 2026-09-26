@@ -3,9 +3,8 @@
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023"],
-    "module": "CommonJS",
-    // Node10 lê "types" do shared (ESM) sem reclamar do formato; em runtime o Node 22.12+ faz require(esm)
-    "moduleResolution": "Node10",
+    // CommonJS que pode dar require() no shared (ESM), como o Node faz desde a 20.19/22.12
+    "module": "Node20",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "sourceMap": true,
