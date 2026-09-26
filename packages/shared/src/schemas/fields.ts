@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const TEXT_MAX_LENGTH = 100
+const TEXT_MAX_LENGTH = 100
 export const REQUEST_BODY_MESSAGE = 'O corpo da requisição deve ser um objeto JSON'
 
 export function requestBody<T extends z.ZodRawShape>(shape: T) {

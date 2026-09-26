@@ -24,24 +24,31 @@ describe('isErrorResponse', () => {
 })
 
 describe('occurrenceResponseSchema', () => {
-  it('descreve o contrato camelCase do enunciado', () => {
-    const iso = '2026-09-25T14:00:00.000Z'
-    const response = {
-      id: '66f4a1c2e4b0a1b2c3d4e5f6',
-      siteId: 'site-a',
-      droneId: 'drone-1',
-      type: 'intrusion',
-      severity: 3,
-      priority: 9,
-      status: 'open',
-      count: 1,
-      note: null,
-      detectedAt: iso,
-      lastDetectedAt: iso,
-      createdAt: iso,
-      updatedAt: iso,
-    }
+  const iso = '2026-09-25T14:00:00.000Z'
+  const valid = {
+    id: '66f4a1c2e4b0a1b2c3d4e5f6',
+    siteId: 'site-a',
+    droneId: 'drone-1',
+    type: 'intrusion',
+    severity: 3,
+    priority: 9,
+    status: 'open',
+    count: 1,
+    note: null,
+    detectedAt: iso,
+    lastDetectedAt: iso,
+    createdAt: iso,
+    updatedAt: iso,
+  }
 
-    expect(occurrenceResponseSchema.parse(response)).toEqual(response)
+  it('aceita a resposta no formato do contrato', () => {
+    expect(occurrenceResponseSchema.safeParse(valid).success).toBe(true)
   })
+
+  it.each([{ count: '2' }, { status: 'closed' }, { detectedAt: 'ontem' }, { note: undefined }])(
+    'recusa resposta fora do contrato (%j): o front a trata como inesperada',
+    (change) => {
+      expect(occurrenceResponseSchema.safeParse({ ...valid, ...change }).success).toBe(false)
+    },
+  )
 })

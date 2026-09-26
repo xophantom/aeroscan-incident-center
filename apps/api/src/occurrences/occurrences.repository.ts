@@ -26,7 +26,7 @@ export function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocu
 }
 
 // severity × peso do tipo calculado pelo Mongo (a mesma fórmula de computePriority)
-const PRIORITY_EXPRESSION = {
+export const PRIORITY_EXPRESSION = {
   $multiply: [
     '$severity',
     {

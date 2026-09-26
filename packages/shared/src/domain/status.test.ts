@@ -16,10 +16,6 @@ describe('canTransition', () => {
     const expected = VALID.some(([f, t]) => f === from && t === to)
     expect(canTransition(from, to)).toBe(expected)
   })
-
-  it('só existem duas transições válidas em todo o espaço de pares', () => {
-    expect(allPairs.filter(([from, to]) => canTransition(from, to))).toEqual(VALID)
-  })
 })
 
 describe('allowedFrom', () => {

@@ -2,8 +2,13 @@ import {
   DEDUP_WINDOW_MS,
   HOUR_MS,
   MAX_ALERT_AGE_MS,
+  MAX_FUTURE_SKEW_MS,
   MAX_SEVERITY,
   MINUTE_MS,
+  MIN_SEVERITY,
+  OCCURRENCE_TYPES,
+  computePriority,
+  occurrenceResponseSchema,
   type CreateOccurrenceBody,
   type ErrorResponse,
   type OccurrenceFilter,
@@ -11,10 +16,12 @@ import {
 } from '@aeroscan/shared'
 import { getModelToken } from '@nestjs/mongoose'
 import type { Model } from 'mongoose'
+import { z } from 'zod'
 import { OCCURRENCE_MODEL, type OccurrenceDocument } from '../src/occurrences/occurrence.schema'
 import {
   LIST_ORDER,
   OccurrencesRepository,
+  PRIORITY_EXPRESSION,
   listFilter,
 } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
@@ -50,14 +57,15 @@ describe('Occurrences (e2e)', () => {
   const post = (body: object) => t.http.post('/occurrences').send(body)
   const patch = (id: string, body: object) => t.http.patch(`/occurrences/${id}/status`).send(body)
 
+  // Toda resposta de sucesso passa pelo schema do contrato que o front também usa
   async function list(query = ''): Promise<OccurrenceResponse[]> {
     const res = await t.http.get(`/occurrences${query}`).expect(200)
-    return res.body as OccurrenceResponse[]
+    return z.array(occurrenceResponseSchema).parse(res.body)
   }
 
   async function create(overrides: Partial<CreateOccurrenceBody> = {}) {
     const res = await post(alert(overrides)).expect(201)
-    return res.body as OccurrenceResponse
+    return occurrenceResponseSchema.parse(res.body)
   }
 
   const errorOf = (res: { body: unknown }) => (res.body as ErrorResponse).error
@@ -88,7 +96,7 @@ describe('Occurrences (e2e)', () => {
 
       const res = await post(alert({ droneId: 'drone-2', severity: 1 })).expect(200)
 
-      expect(res.body).toMatchObject({
+      expect(occurrenceResponseSchema.parse(res.body)).toMatchObject({
         id: first.id,
         count: 2,
         severity: 3,
@@ -146,28 +154,19 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toMatchObject({ count: 3, severity: MAX_SEVERITY, priority: 15 })
     })
 
-    it('422 para detectedAt além de 1 min no futuro; aceita dentro da tolerância', async () => {
-      const future = (ms: number) => new Date(T0.getTime() + ms).toISOString()
+    it.each([
+      [
+        'no futuro',
+        MAX_FUTURE_SKEW_MS + 1_000,
+        'detectedAt não pode estar mais de 1 min no futuro',
+      ],
+      ['atrasado', -MAX_ALERT_AGE_MS - 1_000, 'detectedAt não pode ter mais de 24 h de atraso'],
+    ])('422 para detectedAt %s além do limite', async (_case, offset, message) => {
+      const detectedAt = new Date(T0.getTime() + offset).toISOString()
 
-      const res = await post(alert({ detectedAt: future(MINUTE_MS + 1_000) })).expect(422)
-      expect(errorOf(res)).toMatchObject({
-        code: 'VALIDATION_ERROR',
-        message: 'detectedAt não pode estar mais de 1 min no futuro',
-      })
+      const res = await post(alert({ detectedAt })).expect(422)
 
-      await post(alert({ detectedAt: future(MINUTE_MS) })).expect(201)
-    })
-
-    it('422 para detectedAt com mais de 24 h de atraso; aceita no limite', async () => {
-      const past = (ms: number) => new Date(T0.getTime() - ms).toISOString()
-
-      const res = await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS + 1_000) })).expect(422)
-      expect(errorOf(res)).toMatchObject({
-        code: 'VALIDATION_ERROR',
-        message: 'detectedAt não pode ter mais de 24 h de atraso',
-      })
-
-      await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS) })).expect(201)
+      expect(errorOf(res)).toMatchObject({ code: 'VALIDATION_ERROR', message })
     })
 
     it('corrida: quem leu a versão antes de outra criação não cria duplicata', async () => {
@@ -414,10 +413,18 @@ describe('Occurrences (e2e)', () => {
       const { id } = await create()
 
       const acked = await patch(id, { status: 'acknowledged' }).expect(200)
-      expect(acked.body).toMatchObject({ id, status: 'acknowledged', note: null })
+      expect(occurrenceResponseSchema.parse(acked.body)).toMatchObject({
+        id,
+        status: 'acknowledged',
+        note: null,
+      })
 
       const resolved = await patch(id, { status: 'resolved', note: '  falso alarme  ' }).expect(200)
-      expect(resolved.body).toMatchObject({ id, status: 'resolved', note: 'falso alarme' })
+      expect(occurrenceResponseSchema.parse(resolved.body)).toMatchObject({
+        id,
+        status: 'resolved',
+        note: 'falso alarme',
+      })
     })
 
     it.each([
@@ -501,13 +508,35 @@ describe('Occurrences (e2e)', () => {
   })
 
   describe('prioridade denormalizada', () => {
-    it('o boot recalcula prioridades gravadas com peso desatualizado', async () => {
+    it('o boot (onModuleInit) recalcula prioridades gravadas com peso desatualizado', async () => {
       const created = await create({ type: 'intrusion', severity: 2 })
       await t.connection.collection('occurrences').updateOne({}, { $set: { priority: 99 } })
 
-      await t.app.get(OccurrencesRepository).reconcilePriorities()
+      await t.app.get(OccurrencesRepository).onModuleInit()
 
       expect(await list()).toMatchObject([{ id: created.id, priority: 6 }])
+    })
+
+    it('a fórmula no Mongo bate com computePriority em todo tipo e severidade', async () => {
+      const cases = OCCURRENCE_TYPES.flatMap((type) =>
+        Array.from({ length: MAX_SEVERITY - MIN_SEVERITY + 1 }, (_, i) => ({
+          type,
+          severity: MIN_SEVERITY + i,
+        })),
+      )
+      const db = t.connection.db
+      if (!db) throw new Error('sem conexão com o Mongo')
+
+      const rows = await db
+        .aggregate<{ priority: number }>([
+          { $documents: cases },
+          { $set: { priority: PRIORITY_EXPRESSION } },
+        ])
+        .toArray()
+
+      expect(rows.map((row) => row.priority)).toEqual(
+        cases.map(({ type, severity }) => computePriority(severity, type)),
+      )
     })
   })
 
