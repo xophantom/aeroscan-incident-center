@@ -25,8 +25,18 @@ function respond(exception: unknown) {
   return response
 }
 
+function silenceLogger() {
+  return {
+    error: jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined),
+    warn: jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined),
+  }
+}
+
+let logger: ReturnType<typeof silenceLogger>
+
 beforeEach(() => {
-  jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+  jest.restoreAllMocks()
+  logger = silenceLogger()
 })
 
 describe('AllExceptionsFilter', () => {
@@ -57,6 +67,9 @@ describe('AllExceptionsFilter', () => {
     expect(response.statusCode).toBe(503)
     expect(response.headers).toEqual({ 'Retry-After': '1' })
     expect(response.body).toMatchObject({ error: { code: 'SERVICE_UNAVAILABLE' } })
+    // Passageiro: uma linha de aviso, sem o stack e a topologia do driver
+    expect(logger.warn).toHaveBeenCalledWith('SERVICE_UNAVAILABLE: server selection timed out')
+    expect(logger.error).not.toHaveBeenCalled()
   })
 
   it('4xx sem mapeamento sai como 400, com código e status coerentes', () => {
@@ -73,5 +86,6 @@ describe('AllExceptionsFilter', () => {
     expect(response.body).toEqual({
       error: { code: 'INTERNAL_ERROR', message: 'Erro interno do servidor' },
     })
+    expect(logger.error).toHaveBeenCalledWith(expect.any(Error))
   })
 })

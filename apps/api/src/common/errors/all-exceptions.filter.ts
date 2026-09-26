@@ -49,10 +49,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const { status, body } = toErrorReply(exception)
-    if (status >= 500) this.logger.error(exception)
+    const transient = TRANSIENT_CODES.has(body.error.code)
+    // Passageiro (banco fora, conflito de escrita) cabe numa linha; os demais 5xx vão com o stack
+    if (transient) this.logger.warn(`${body.error.code}: ${messageOf(exception)}`)
+    else if (status >= 500) this.logger.error(exception)
 
     const response = host.switchToHttp().getResponse<Response>()
-    if (TRANSIENT_CODES.has(body.error.code)) response.setHeader('Retry-After', '1')
+    if (transient) response.setHeader('Retry-After', '1')
     response.status(status).json(body)
   }
 }
@@ -88,6 +91,10 @@ function httpStatusOf(exception: unknown): number {
   return typeof status === 'number' && status >= 400 && status < 600
     ? status
     : HttpStatus.INTERNAL_SERVER_ERROR
+}
+
+function messageOf(exception: unknown): string {
+  return exception instanceof Error ? exception.message : String(exception)
 }
 
 function reply(status: number, code: ErrorCode, message: string, details?: unknown): ErrorReply {
