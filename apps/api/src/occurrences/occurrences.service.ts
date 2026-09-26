@@ -3,6 +3,7 @@ import {
   allowedFrom,
   canTransition,
   isTooFarInFuture,
+  requiresNote,
   isTooOld,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
@@ -16,6 +17,7 @@ import {
   detectedAtTooOld,
   invalidStatusTransition,
   occurrenceNotFound,
+  resolutionNoteRequired,
   writeConflict,
 } from './occurrence.errors'
 import { OccurrencesRepository } from './occurrences.repository'
@@ -65,18 +67,22 @@ export class OccurrencesService {
 
   async changeStatus(id: string, change: UpdateStatusInput): Promise<Occurrence> {
     const from = allowedFrom(change.status)
-    // Se outra requisição levou o status para uma origem válida entre o update e a leitura, tenta
-    // de novo; o limite de uma volta por status garante o fim mesmo com transições em ciclo
+    const note = change.status === 'resolved' ? change.note : undefined
+    const complete = !requiresNote(change.status) || note !== undefined
+    // O fluxo só avança, então há no máximo uma volta por status (quando outra requisição levou o
+    // status a uma origem válida entre o update e a leitura); o limite vale se a tabela ganhar ciclos
     for (let attempt = 0; attempt < OCCURRENCE_STATUSES.length; attempt++) {
-      const updated = from.length > 0 ? await this.repository.changeStatus(id, from, change) : null
+      const updated =
+        from.length > 0 && complete ? await this.repository.changeStatus(id, from, change) : null
       if (updated) return updated
 
-      // O update condicional não diz por que falhou: 404 se o id não existe, 409 se o status não deixa
+      // O update condicional não diz por que falhou: 404, 409 ou, se a transição vale, falta a nota
       const current = await this.repository.findById(id)
       if (!current) throw occurrenceNotFound(id)
       if (!canTransition(current.status, change.status)) {
         throw invalidStatusTransition(current.status, change.status)
       }
+      if (!complete) throw resolutionNoteRequired()
     }
 
     throw writeConflict()

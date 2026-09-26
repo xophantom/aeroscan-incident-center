@@ -135,7 +135,14 @@ describe('updateStatusBodySchema', () => {
     expect(updateStatusBodySchema.parse({ status: 'open' })).toEqual({ status: 'open' })
   })
 
-  it('resolved exige nota e faz trim', () => {
+  it.each([{ status: 'resolved' }, { status: 'resolved', note: '   ' }])(
+    'resolved sem nota (%j) passa: a API cobra a nota depois do 404/409',
+    (body) => {
+      expect(updateStatusBodySchema.parse(body)).toEqual({ status: 'resolved' })
+    },
+  )
+
+  it('resolved faz trim da nota', () => {
     expect(updateStatusBodySchema.parse({ status: 'resolved', note: '  falso positivo ' })).toEqual(
       {
         status: 'resolved',
@@ -145,8 +152,6 @@ describe('updateStatusBodySchema', () => {
   })
 
   it.each([
-    [{ status: 'resolved' }, 'A nota é obrigatória para resolver a ocorrência'],
-    [{ status: 'resolved', note: '   ' }, 'A nota é obrigatória para resolver a ocorrência'],
     [{ status: 'resolved', note: 7 }, 'note deve ser um texto'],
     [
       { status: 'resolved', note: 'x'.repeat(NOTE_MAX_LENGTH + 1) },

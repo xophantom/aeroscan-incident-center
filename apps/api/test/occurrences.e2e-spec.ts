@@ -469,6 +469,18 @@ describe('Occurrences (e2e)', () => {
       expect((await list())[0]?.status).toBe('acknowledged')
     })
 
+    it('resolver sem nota confere existência e transição antes da nota', async () => {
+      const { id } = await create()
+
+      await patch('66f4a1c2e4b0a1b2c3d4e5f6', { status: 'resolved' }).expect(404)
+      const skipped = await patch(id, { status: 'resolved' }).expect(409)
+      expect(errorOf(skipped).details).toEqual({ from: 'open', to: 'resolved' })
+
+      await patch(id, { status: 'acknowledged' }).expect(200)
+      await patch(id, { status: 'resolved', note: 'ok' }).expect(200)
+      await patch(id, { status: 'resolved' }).expect(409)
+    })
+
     it('422 para status desconhecido', async () => {
       const { id } = await create()
 

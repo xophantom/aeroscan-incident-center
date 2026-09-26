@@ -3,6 +3,7 @@ import {
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
   MINUTE_MS,
+  NOTE_REQUIRED_MESSAGE,
   STATUS_TRANSITIONS,
   type OccurrenceStatus,
 } from '@aeroscan/shared'
@@ -43,6 +44,15 @@ export function detectedAtInFuture(): AppException {
 export function detectedAtTooOld(): AppException {
   return invalidDetectedAt(
     `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / HOUR_MS} h de atraso`,
+  )
+}
+
+export function resolutionNoteRequired(): AppException {
+  return new AppException(
+    'VALIDATION_ERROR',
+    NOTE_REQUIRED_MESSAGE,
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    [{ path: 'note', message: NOTE_REQUIRED_MESSAGE }],
   )
 }
 

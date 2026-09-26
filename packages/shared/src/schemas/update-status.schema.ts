@@ -1,19 +1,19 @@
 import { z } from 'zod'
 import { OCCURRENCE_STATUSES, type OccurrenceStatus } from '../domain/occurrence.js'
-import { REQUEST_BODY_MESSAGE } from './fields.js'
+import { REQUEST_BODY_MESSAGE, blankToUndefined } from './fields.js'
 
 export const NOTE_MAX_LENGTH = 1000
-const noteRequired = 'A nota é obrigatória para resolver a ocorrência'
+export const NOTE_REQUIRED_MESSAGE = 'A nota é obrigatória para resolver a ocorrência'
 
 const resolutionNoteSchema = z
-  .string({ required_error: noteRequired, invalid_type_error: 'note deve ser um texto' })
+  .string({ required_error: NOTE_REQUIRED_MESSAGE, invalid_type_error: 'note deve ser um texto' })
   .trim()
-  .min(1, noteRequired)
+  .min(1, NOTE_REQUIRED_MESSAGE)
   .max(NOTE_MAX_LENGTH, `A nota deve ter no máximo ${NOTE_MAX_LENGTH} caracteres`)
 
 /**
- * Body do PATCH /occurrences/:id/status, discriminado por `status`.
- * `open` é aceito aqui de propósito: voltar para open é transição inválida (409), não dado inválido (422).
+ * Body do PATCH /occurrences/:id/status, discriminado por `status`. Transição (409) e existência
+ * (404) vêm antes da nota: por isso `open` é aceito aqui e a nota, se vazia, vale como ausente.
  */
 export const updateStatusBodySchema = z.discriminatedUnion(
   'status',
@@ -22,7 +22,7 @@ export const updateStatusBodySchema = z.discriminatedUnion(
     z.object({ status: z.literal('acknowledged' satisfies OccurrenceStatus) }),
     z.object({
       status: z.literal('resolved' satisfies OccurrenceStatus),
-      note: resolutionNoteSchema,
+      note: z.preprocess(blankToUndefined, resolutionNoteSchema.optional()),
     }),
   ],
   {
@@ -39,5 +39,5 @@ export const updateStatusBodySchema = z.discriminatedUnion(
 export type UpdateStatusBody = z.input<typeof updateStatusBodySchema>
 export type UpdateStatusInput = z.output<typeof updateStatusBodySchema>
 
-/** Formulário "Resolver" do front: mesma regra de nota do PATCH. */
+/** Formulário "Resolver" do front: a nota é obrigatória e segue as mesmas regras do PATCH. */
 export const resolveFormSchema = z.object({ note: resolutionNoteSchema })

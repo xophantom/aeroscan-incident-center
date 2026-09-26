@@ -162,6 +162,20 @@ describe('OccurrencesService.changeStatus', () => {
     expect(repository.changeStatus).toHaveBeenCalledTimes(2)
   })
 
+  it.each([
+    ['404 se a ocorrência não existe', null, 'OCCURRENCE_NOT_FOUND'],
+    ['409 se a transição não vale (pular etapa)', 'open', 'INVALID_STATUS_TRANSITION'],
+    ['422 só quando a transição vale', 'acknowledged', 'VALIDATION_ERROR'],
+  ] as const)('resolver sem nota: %s', async (_case, current, code) => {
+    const { service, repository } = setup()
+    repository.findById.mockResolvedValue(current && occurrence({ status: current }))
+
+    const error = await appError(service.changeStatus(id, { status: 'resolved' }))
+
+    expect(error.code).toBe(code)
+    expect(repository.changeStatus).not.toHaveBeenCalled()
+  })
+
   it('404 quando o update não aplica e a ocorrência não existe', async () => {
     const { service } = setup()
 

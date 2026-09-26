@@ -31,7 +31,7 @@ export function oneOf<T extends readonly [string, ...string[]]>(field: string, v
 }
 
 // "?status=" (como no enunciado) chega como string vazia: vale como filtro ausente
-function blankToUndefined(value: unknown): unknown {
+export function blankToUndefined(value: unknown): unknown {
   return typeof value === 'string' && value.trim() === '' ? undefined : value
 }
 
