@@ -42,6 +42,10 @@ for (const [status, list] of Object.entries(byStatus)) {
 }
 
 const res = await fetch(`${apiUrl}/occurrences?siteId=${encodeURIComponent(siteId)}`)
+if (!res.ok) {
+  console.error(`Falha ao listar as ocorrências: HTTP ${res.status} ${await res.text()}`)
+  process.exit(1)
+}
 const occurrences = (await res.json()) as Array<{ id: string; count: number; severity: number }>
 
 console.log(`\nOcorrências para ${siteId}: ${occurrences.length}`)
