@@ -6,9 +6,11 @@ import {
   type ErrorResponse,
   type OccurrenceResponse,
 } from '@aeroscan/shared'
+import { OccurrencesRepository } from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
 
 const MINUTE = 60_000
+const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE).toISOString()
 
 describe('Occurrences (e2e)', () => {
   let t: TestApp
@@ -158,6 +160,34 @@ describe('Occurrences (e2e)', () => {
       await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS) })).expect(201)
     })
 
+    it('corrida fora de ordem: agrupa na ocorrência aberta mesmo após outra requisição liberar a vaga dela', async () => {
+      const first = await create()
+      t.clock.advance(20 * MINUTE)
+      // Passo intermediário de um alerta de T0+20 min: a vaga ativa de `first` venceu para ele
+      await t.app.get(OccurrencesRepository).closeStaleActiveWindow({
+        siteId: 'site-a',
+        droneId: 'drone-2',
+        type: 'intrusion',
+        severity: 1,
+        detectedAt: t.clock.now(),
+      })
+
+      const res = await post(alert({ detectedAt: at(5) })).expect(200)
+
+      expect(res.body).toMatchObject({ id: first.id, count: 2 })
+    })
+
+    it('alerta fora de ordem agrupa na ocorrência cuja janela o contém, não na mais recente', async () => {
+      const first = await create()
+      t.clock.advance(15 * MINUTE)
+      const second = await create()
+
+      const res = await post(alert({ detectedAt: at(5) })).expect(200)
+
+      expect(second.id).not.toBe(first.id)
+      expect(res.body).toMatchObject({ id: first.id, count: 2 })
+    })
+
     it('alerta atrasado (dentro de 24 h) agrupa na ocorrência aberta do site+tipo', async () => {
       const open = await create()
       const late = new Date(T0.getTime() - 3 * 60 * MINUTE).toISOString()
@@ -248,7 +278,6 @@ describe('Occurrences (e2e)', () => {
   describe('GET /occurrences', () => {
     it('ordena por prioridade desc; no empate, a detecção mais recente primeiro', async () => {
       t.clock.advance(10 * MINUTE)
-      const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE).toISOString()
 
       // Exemplo do enunciado: intrusion 3 (9) > perimeter_breach 4 (8) > low_battery 5 (5)
       await create({ type: 'low_battery', severity: 5, detectedAt: at(1) })

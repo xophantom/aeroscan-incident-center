@@ -22,7 +22,10 @@ export interface OccurrenceDocument {
   note: string | null
   detectedAt: Date
   lastDetectedAt: Date
-  /** true enquanto a ocorrência pode receber alertas agrupados. */
+  /**
+   * Vaga única de criação por site+tipo (índice único parcial). Sai de true quando a ocorrência
+   * deixa `open` ou quando um alerta posterior a encontra vencida.
+   */
   activeWindow: boolean
   createdAt: Date
   updatedAt: Date
@@ -49,6 +52,9 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
 
 // Listagem: filtros por igualdade seguidos da ordenação, tudo no mesmo índice
 OccurrenceSchema.index({ status: 1, siteId: 1, priority: -1, detectedAt: -1 })
+
+// Busca do agrupamento: site, tipo e status por igualdade; detectedAt como faixa e ordenação
+OccurrenceSchema.index({ siteId: 1, type: 1, status: 1, detectedAt: 1 })
 
 // Garantia do dedup sob concorrência: no máximo uma janela ativa por site+tipo
 OccurrenceSchema.index(

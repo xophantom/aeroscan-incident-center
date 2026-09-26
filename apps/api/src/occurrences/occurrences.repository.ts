@@ -24,15 +24,18 @@ export class OccurrencesRepository implements OnModuleInit {
     await this.model.syncIndexes()
   }
 
-  /** Agrupa o alerta, de forma atômica, na janela aberta do mesmo site+tipo (se existir). */
-  async groupIntoActiveWindow(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+  /**
+   * Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo detectada a partir do
+   * início da janela do alerta. Não exige a vaga ativa: um alerta fora de ordem acha a sua
+   * ocorrência mesmo que outra requisição já tenha liberado a vaga dela.
+   */
+  async groupIntoOpenOccurrence(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
     const doc = await this.model
       .findOneAndUpdate(
         {
           siteId: alert.siteId,
           type: alert.type,
           status: 'open',
-          activeWindow: true,
           detectedAt: { $gte: dedupWindowStart(alert.detectedAt) },
         },
         // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
@@ -46,7 +49,7 @@ export class OccurrencesRepository implements OnModuleInit {
           },
           { $set: { priority: { $multiply: ['$severity', TYPE_WEIGHT[alert.type]] } } },
         ],
-        { new: true },
+        { new: true, sort: { detectedAt: 1 } },
       )
       .lean<LeanOccurrence>()
 
@@ -54,19 +57,16 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 
   /**
-   * Fecha janelas do site+tipo que não agrupam mais: expiradas ou fora de `open`.
-   * É o complemento exato do filtro acima, então nunca fecha uma janela válida recém-criada.
+   * Libera a vaga de janela ativa do site+tipo se ela venceu para este alerta. Fora de `open` a vaga
+   * já foi liberada no changeStatus, e uma ocupante ainda válida nunca é tocada.
    */
-  async closeStaleWindows(alert: CreateOccurrenceInput): Promise<void> {
-    await this.model.updateMany(
+  async closeStaleActiveWindow(alert: CreateOccurrenceInput): Promise<void> {
+    await this.model.updateOne(
       {
         siteId: alert.siteId,
         type: alert.type,
         activeWindow: true,
-        $or: [
-          { status: { $ne: 'open' } },
-          { detectedAt: { $lt: dedupWindowStart(alert.detectedAt) } },
-        ],
+        detectedAt: { $lt: dedupWindowStart(alert.detectedAt) },
       },
       { $set: { activeWindow: false } },
     )

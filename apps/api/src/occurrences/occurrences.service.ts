@@ -33,9 +33,10 @@ export class OccurrencesService {
   ) {}
 
   /**
-   * Agrupa o alerta na ocorrência aberta do mesmo site+tipo (janela de 10 min) ou cria uma nova.
-   * "Buscar e depois inserir" tem corrida; quem garante uma única janela é o índice único parcial.
-   * Perder a corrida no insert significa que a janela agora existe: basta tentar agrupar de novo.
+   * Agrupa o alerta numa ocorrência aberta do mesmo site+tipo (janela de 10 min) ou cria uma nova.
+   * "Buscar e depois inserir" tem corrida; quem garante uma única criação é o índice único parcial
+   * (uma vaga ativa por site+tipo). Perder a corrida no insert significa que a janela agora existe:
+   * basta tentar agrupar de novo.
    */
   async register(alert: CreateOccurrenceInput): Promise<RegisterResult> {
     const now = this.clock.now()
@@ -43,10 +44,10 @@ export class OccurrencesService {
     if (isTooOld(alert.detectedAt, now)) throw detectedAtTooOld()
 
     for (let attempt = 1; attempt <= MAX_DEDUP_ATTEMPTS; attempt++) {
-      const grouped = await this.repository.groupIntoActiveWindow(alert)
+      const grouped = await this.repository.groupIntoOpenOccurrence(alert)
       if (grouped) return { occurrence: grouped, created: false }
 
-      await this.repository.closeStaleWindows(alert)
+      await this.repository.closeStaleActiveWindow(alert)
       const created = await this.repository.insertActive(alert)
       if (created) return { occurrence: created, created: true }
     }

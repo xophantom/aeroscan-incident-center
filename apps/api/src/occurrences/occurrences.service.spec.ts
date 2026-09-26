@@ -37,8 +37,8 @@ function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
 type RepositoryMock = jest.Mocked<
   Pick<
     OccurrencesRepository,
-    | 'groupIntoActiveWindow'
-    | 'closeStaleWindows'
+    | 'groupIntoOpenOccurrence'
+    | 'closeStaleActiveWindow'
     | 'insertActive'
     | 'list'
     | 'findById'
@@ -48,8 +48,8 @@ type RepositoryMock = jest.Mocked<
 
 function setup() {
   const repository: RepositoryMock = {
-    groupIntoActiveWindow: jest.fn().mockResolvedValue(null),
-    closeStaleWindows: jest.fn().mockResolvedValue(undefined),
+    groupIntoOpenOccurrence: jest.fn().mockResolvedValue(null),
+    closeStaleActiveWindow: jest.fn().mockResolvedValue(undefined),
     insertActive: jest.fn().mockResolvedValue(null),
     list: jest.fn().mockResolvedValue([]),
     findById: jest.fn().mockResolvedValue(null),
@@ -75,23 +75,23 @@ async function appError(promise: Promise<unknown>): Promise<AppException> {
 }
 
 describe('OccurrencesService.register', () => {
-  it('agrupa quando há janela ativa, sem tentar criar', async () => {
+  it('agrupa quando há ocorrência aberta na janela, sem tentar criar', async () => {
     const { service, repository } = setup()
     const grouped = occurrence({ count: 2, severity: 3 })
-    repository.groupIntoActiveWindow.mockResolvedValue(grouped)
+    repository.groupIntoOpenOccurrence.mockResolvedValue(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
     expect(repository.insertActive).not.toHaveBeenCalled()
   })
 
-  it('cria quando não há janela, fechando janelas vencidas antes do insert', async () => {
+  it('cria quando não há ocorrência na janela, liberando a vaga vencida antes do insert', async () => {
     const { service, repository } = setup()
     const created = occurrence()
     repository.insertActive.mockResolvedValue(created)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: created, created: true })
 
-    expect(firstCallOrder(repository.closeStaleWindows)).toBeLessThan(
+    expect(firstCallOrder(repository.closeStaleActiveWindow)).toBeLessThan(
       firstCallOrder(repository.insertActive),
     )
   })
@@ -99,10 +99,10 @@ describe('OccurrencesService.register', () => {
   it('perdeu a corrida no insert (E11000): volta a agrupar na janela que o outro criou', async () => {
     const { service, repository } = setup()
     const grouped = occurrence({ count: 2 })
-    repository.groupIntoActiveWindow.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
+    repository.groupIntoOpenOccurrence.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
-    expect(repository.groupIntoActiveWindow).toHaveBeenCalledTimes(2)
+    expect(repository.groupIntoOpenOccurrence).toHaveBeenCalledTimes(2)
     expect(repository.insertActive).toHaveBeenCalledTimes(1)
   })
 
@@ -124,7 +124,7 @@ describe('OccurrencesService.register', () => {
 
     expect(error.code).toBe('VALIDATION_ERROR')
     expect(error.getStatus()).toBe(422)
-    expect(repository.groupIntoActiveWindow).not.toHaveBeenCalled()
+    expect(repository.groupIntoOpenOccurrence).not.toHaveBeenCalled()
   })
 
   it('aceita até 1 min à frente (desvio de relógio do drone)', async () => {
@@ -144,7 +144,7 @@ describe('OccurrencesService.register', () => {
 
     expect(error.code).toBe('VALIDATION_ERROR')
     expect(error.getStatus()).toBe(422)
-    expect(repository.groupIntoActiveWindow).not.toHaveBeenCalled()
+    expect(repository.groupIntoOpenOccurrence).not.toHaveBeenCalled()
   })
 
   it('aceita até 24 h de atraso (entrega atrasada)', async () => {
