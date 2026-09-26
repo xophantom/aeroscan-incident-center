@@ -35,7 +35,6 @@ const PRIORITY_EXPRESSION = {
           case: { $eq: ['$type', type] },
           then: TYPE_WEIGHT[type],
         })),
-        default: 0, // tipo que saiu do enum não derruba o boot
       },
     },
   ],

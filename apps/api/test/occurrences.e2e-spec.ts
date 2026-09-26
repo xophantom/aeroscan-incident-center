@@ -195,7 +195,7 @@ describe('Occurrences (e2e)', () => {
       expect((await list('?siteId=burst')).map((o) => o.count)).toEqual(Array<number>(40).fill(3))
     })
 
-    it('alerta fora de ordem agrupa na ocorrência cuja janela o contém, não na mais recente', async () => {
+    it('alerta na janela de duas ocorrências abertas agrupa na mais antiga', async () => {
       const first = await create()
       t.clock.advance(15 * MINUTE_MS)
       const second = await create()

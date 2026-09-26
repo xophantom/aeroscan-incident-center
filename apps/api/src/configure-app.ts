@@ -5,10 +5,10 @@ import { Logger } from 'nestjs-pino'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import { AppConfig } from './config/app-config'
 
-/** Opções de criação do app, as mesmas no main.ts e nos testes e2e. */
+// Usados pelo main.ts e pelos testes e2e, para o app testado ser o mesmo que sobe.
+// bodyParser: false porque configureApp registra o parser JSON sem o modo strict.
 export const APP_OPTIONS: NestApplicationOptions = { bufferLogs: true, bodyParser: false }
 
-/** Configuração compartilhada entre main.ts e os testes e2e. */
 export function configureApp(app: NestExpressApplication): NestExpressApplication {
   app.useLogger(app.get(Logger))
   app.disable('x-powered-by')
