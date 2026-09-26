@@ -1,6 +1,7 @@
 import type { Server } from 'node:http'
 import type { INestApplication } from '@nestjs/common'
 import { getConnectionToken } from '@nestjs/mongoose'
+import { AbstractLoader, ExpressLoader } from '@nestjs/serve-static'
 import { Test } from '@nestjs/testing'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 import type { Connection } from 'mongoose'
@@ -48,6 +49,9 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
     )
     .overrideProvider(ClockService)
     .useValue(clock)
+    // No módulo de teste o serve-static nasce antes do adapter HTTP e cairia no NoopLoader
+    .overrideProvider(AbstractLoader)
+    .useValue(new ExpressLoader())
     .compile()
 
   const app = configureApp(moduleRef.createNestApplication({ bufferLogs: true }))

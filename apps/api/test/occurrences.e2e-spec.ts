@@ -515,6 +515,13 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toEqual({ status: 'ok', mongo: 'up' })
     })
 
+    it('GET / serve o front compilado', async () => {
+      const res = await t.http.get('/').expect(200)
+
+      expect(res.headers['content-type']).toContain('text/html')
+      expect(res.text).toContain('<div id="root">')
+    })
+
     it('rota desconhecida → 404 no envelope (sem fallback para o index.html)', async () => {
       const res = await t.http.get('/occurrences/abc/nada').expect(404)
 

@@ -6,6 +6,7 @@ import { LoggingModule } from './common/logging/logging.module'
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe'
 import { AppConfig } from './config/app-config'
 import { ConfigModule } from './config/config.module'
+import { frontendServeOptions } from './frontend-static'
 import { HealthModule } from './health/health.module'
 import { ClockModule } from './infra/clock/clock.module'
 import { MongoModule } from './infra/mongo/mongo.module'
@@ -19,10 +20,7 @@ import { OccurrencesModule } from './occurrences/occurrences.module'
     MongoModule,
     ServeStaticModule.forRootAsync({
       inject: [AppConfig],
-      useFactory: (config: AppConfig) => [
-        // O front não tem rotas: só "/" devolve o index.html, sem fallback que engula 404 da API
-        { rootPath: config.frontendDistPath, renderPath: '/' },
-      ],
+      useFactory: (config: AppConfig) => frontendServeOptions(config.frontendDistPath),
     }),
     HealthModule,
     OccurrencesModule,
