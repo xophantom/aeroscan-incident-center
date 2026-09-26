@@ -9,7 +9,10 @@ export interface OccurrenceDocument extends Omit<Occurrence, 'id'> {
   seq: number
   /** Chaves (alertKey) dos alertas já contados aqui: o reenvio de um deles não conta de novo. */
   alertKeys: string[]
-  /** Quando deixou de estar aberta: alerta detectado antes disso ainda entra, mesmo atrasado. */
+  /**
+   * Quando deixou de estar aberta: alerta detectado antes disso ainda entra, mesmo atrasado, se
+   * vier de um drone que já está nela.
+   */
   acknowledgedAt: Date | null
 }
 
@@ -42,8 +45,8 @@ OccurrenceSchema.index({ priority: -1, detectedAt: -1, _id: -1 }) // sem filtro
 OccurrenceSchema.index({ status: 1, priority: -1, detectedAt: -1, _id: -1 }) // ?status=
 OccurrenceSchema.index({ siteId: 1, priority: -1, detectedAt: -1, _id: -1 }) // ?siteId= (com ou sem status)
 
-// Busca do agrupamento: site e tipo por igualdade, detectedAt como faixa e ordenação. O status e o
-// reconhecimento são conferidos depois, entre as poucas ocorrências da janela.
+// Busca do agrupamento: site e tipo por igualdade, detectedAt como faixa e ordenação. O status, o
+// reconhecimento e o drone são conferidos depois, entre as poucas ocorrências da janela.
 OccurrenceSchema.index({ siteId: 1, type: 1, detectedAt: 1 })
 
 // Reenvio: a chave de um alerta só pode estar em uma ocorrência

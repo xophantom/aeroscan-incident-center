@@ -82,8 +82,9 @@ export class OccurrencesRepository implements OnModuleInit {
 
   /**
    * Agrupa, de forma atômica, na ocorrência mais antiga do site+tipo dentro da janela do alerta:
-   * aberta, ou já reconhecida se o alerta foi detectado antes do reconhecimento (chegou atrasado).
-   * Lança DuplicateAlertError se a chave do alerta já está em outra ocorrência.
+   * aberta, ou já reconhecida se o alerta foi detectado antes do reconhecimento (chegou atrasado)
+   * por um drone que já estava nela. Lança DuplicateAlertError se a chave do alerta já está em
+   * outra ocorrência.
    */
   async groupIntoOccurrence(alert: CreateOccurrenceInput, key: string): Promise<Occurrence | null> {
     const { from, to } = dedupWindow(alert.detectedAt)
@@ -96,7 +97,12 @@ export class OccurrencesRepository implements OnModuleInit {
             type: alert.type,
             detectedAt: { $gte: from, $lte: to },
             alertKeys: { $ne: key },
-            $or: [{ status: 'open' }, { acknowledgedAt: { $gte: alert.detectedAt } }],
+            $or: [
+              { status: 'open' },
+              // Já tratada: só entra o alerta atrasado de um drone que o gestor viu nela ao
+              // reconhecer. Drone novo pode ser outro incidente no mesmo site, e vai para a fila.
+              { acknowledgedAt: { $gte: alert.detectedAt }, droneIds: alert.droneId },
+            ],
           },
           // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
           [

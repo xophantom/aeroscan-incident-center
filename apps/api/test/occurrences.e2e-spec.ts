@@ -148,8 +148,8 @@ describe('Occurrences (e2e)', () => {
         t.clock.advance(5 * MINUTE_MS)
         for (const change of changes) await patch(handled.id, change).expect(200)
 
-        // Detectado 2 min depois da abertura, antes do reconhecimento; chega só agora
-        const late = alert({ droneId: 'drone-2', detectedAt: at(2) })
+        // Mesmo drone, detectado 2 min depois da abertura e antes do reconhecimento; chega só agora
+        const late = alert({ detectedAt: at(2) })
         const res = await post(late).expect(200)
 
         expect(res.body).toMatchObject({
@@ -157,12 +157,27 @@ describe('Occurrences (e2e)', () => {
           status: changes.at(-1)?.status,
           count: 2,
           severity: 2,
-          droneIds: ['drone-1', 'drone-2'],
+          droneIds: ['drone-1'],
           lastDetectedAt: at(2),
         })
         expect(await list()).toHaveLength(1)
       },
     )
+
+    it('alerta atrasado entra na reconhecida só se o drone já estava nela; drone novo abre outra', async () => {
+      const handled = await create()
+      t.clock.advance(MINUTE_MS)
+      await post(alert({ droneId: 'drone-2' })).expect(200)
+      t.clock.advance(4 * MINUTE_MS)
+      await patch(handled.id, { status: 'acknowledged' }).expect(200)
+
+      // Detectados 3 min depois da abertura, antes do reconhecimento; chegam só agora
+      const known = await post(alert({ droneId: 'drone-2', detectedAt: at(3) })).expect(200)
+      const unknown = await post(alert({ droneId: 'drone-3', detectedAt: at(3) })).expect(201)
+
+      expect(known.body).toMatchObject({ id: handled.id, status: 'acknowledged', count: 3 })
+      expect(unknown.body).toMatchObject({ status: 'open', count: 1, droneIds: ['drone-3'] })
+    })
 
     it('reenvio do mesmo alerta responde 200 com a ocorrência dele e não conta de novo', async () => {
       const body = alert()
