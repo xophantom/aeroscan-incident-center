@@ -7,8 +7,7 @@ import {
 } from '@aeroscan/shared'
 import { createZodDto } from 'nestjs-zod'
 
-// Classes Nest dos schemas do shared: o pipe global valida pelo tipo do parâmetro e o Swagger lê o
-// schema. O nome da classe vira o nome do componente no Swagger.
+// DTOs dos schemas do shared: o pipe global valida por eles e o Swagger os documenta
 export class CreateOccurrenceDto extends createZodDto(createOccurrenceBodySchema) {}
 export class ListOccurrencesQueryDto extends createZodDto(listOccurrencesQuerySchema) {}
 export class OccurrenceResponseDto extends createZodDto(occurrenceResponseSchema) {}

@@ -58,10 +58,10 @@ const VALID_TRANSITIONS = Object.entries(STATUS_TRANSITIONS)
   .flatMap(([from, targets]) => targets.map((to) => `${from} → ${to}`))
   .join(', ')
 
-// Erros do body-parser, comuns às rotas com corpo
-const ApiBodyErrors = () =>
+// Erros ao ler a requisição, comuns às rotas com corpo
+const ApiBodyErrors = (badRequest: string) =>
   applyDecorators(
-    ApiBadRequestResponse({ type: ErrorResponseDto, description: 'JSON ou URL malformado' }),
+    ApiBadRequestResponse({ type: ErrorResponseDto, description: badRequest }),
     ApiPayloadTooLargeResponse({ type: ErrorResponseDto, description: 'Corpo acima do limite' }),
     ApiUnsupportedMediaTypeResponse({
       type: ErrorResponseDto,
@@ -93,7 +93,7 @@ export class OccurrencesController {
   @ApiUnavailable(
     'Banco de dados indisponível (SERVICE_UNAVAILABLE) ou retentativas esgotadas sob concorrência (WRITE_CONFLICT)',
   )
-  @ApiBodyErrors()
+  @ApiBodyErrors('JSON malformado')
   async create(
     @Body() body: CreateOccurrenceDto,
     @Res({ passthrough: true }) res: Response,
@@ -125,7 +125,7 @@ export class OccurrencesController {
   @ApiOkResponse({ type: OccurrenceResponseDto, description: 'Status alterado' })
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Ocorrência não encontrada' })
   @ApiConflictResponse({ type: ErrorResponseDto, description: 'Transição inválida' })
-  @ApiBodyErrors()
+  @ApiBodyErrors('JSON malformado ou id com escape % inválido')
   async changeStatus(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateStatusBodySchema)) body: UpdateStatusInput,

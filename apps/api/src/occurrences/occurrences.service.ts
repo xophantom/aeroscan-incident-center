@@ -74,8 +74,8 @@ export class OccurrencesService {
     const from = allowedFrom(change.status)
     const note = change.status === 'resolved' ? change.note : undefined
     const complete = !requiresNote(change.status) || note !== undefined
-    // O fluxo só avança, então há no máximo uma volta por status (quando outra requisição levou o
-    // status a uma origem válida entre o update e a leitura); o limite vale se a tabela ganhar ciclos
+    // Só repete quando outra requisição levou o status a uma origem válida entre o update e a
+    // leitura. Como o fluxo só avança, isso acontece menos vezes do que há status.
     for (let attempt = 0; attempt < OCCURRENCE_STATUSES.length; attempt++) {
       const updated =
         from.length > 0 && complete ? await this.repository.changeStatus(id, from, change) : null

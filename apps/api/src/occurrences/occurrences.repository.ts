@@ -106,10 +106,7 @@ export class OccurrencesRepository implements OnModuleInit {
     return doc && toOccurrence(doc)
   }
 
-  /**
-   * Cria a ocorrência na versão seguinte à lida. Se outra requisição criou uma ocorrência do site+tipo
-   * depois dessa leitura, a versão já existe (índice único → E11000) e retorna null.
-   */
+  /** Cria com `seq = version + 1`; null se outra requisição já criou nessa versão (E11000). */
   async insertAtVersion(alert: CreateOccurrenceInput, version: number): Promise<Occurrence | null> {
     try {
       const doc = await this.model.create({
