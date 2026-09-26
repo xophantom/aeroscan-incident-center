@@ -11,6 +11,8 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default(join(__dirname, '..', '..', '..', '..', 'frontend-dist')),
+  // Origens com CORS, separadas por vírgula; "null" é o front aberto via file://
+  CORS_ORIGINS: z.string().default('null'),
 })
 
 type LogLevel = z.infer<typeof envSchema>['LOG_LEVEL']
@@ -21,6 +23,7 @@ export class AppConfig {
   readonly logLevel: LogLevel
   readonly logPretty: boolean
   readonly frontendDistPath: string
+  readonly corsOrigins: string[]
 
   constructor(env: NodeJS.ProcessEnv) {
     const parsed = envSchema.parse(env)
@@ -31,5 +34,6 @@ export class AppConfig {
       ? parsed.LOG_PRETTY === 'true'
       : env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test'
     this.frontendDistPath = parsed.FRONTEND_DIST_PATH
+    this.corsOrigins = parsed.CORS_ORIGINS.split(',').map((origin) => origin.trim())
   }
 }

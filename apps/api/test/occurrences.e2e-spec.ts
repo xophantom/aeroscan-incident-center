@@ -531,10 +531,21 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).code).toBe('NOT_FOUND')
     })
 
-    it('aceita Origin null (front aberto via file://)', async () => {
-      const res = await t.http.get('/occurrences').set('Origin', 'null').expect(200)
+    it('libera CORS para Origin null (front aberto via file://)', async () => {
+      const res = await t.http
+        .options('/occurrences/66f4a1c2e4b0a1b2c3d4e5f6/status')
+        .set('Origin', 'null')
+        .set('Access-Control-Request-Method', 'PATCH')
+        .expect(204)
 
-      expect(res.headers['access-control-allow-origin']).toBe('*')
+      expect(res.headers['access-control-allow-origin']).toBe('null')
+      expect(res.headers['access-control-allow-methods']).toContain('PATCH')
+    })
+
+    it('não libera CORS para outras origens', async () => {
+      const res = await t.http.get('/occurrences').set('Origin', 'https://site-qualquer.example')
+
+      expect(res.headers['access-control-allow-origin']).toBeUndefined()
     })
   })
 })
