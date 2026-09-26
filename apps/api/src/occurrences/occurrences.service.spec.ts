@@ -166,7 +166,7 @@ describe('OccurrencesService.changeStatus', () => {
     repository.changeStatus.mockResolvedValue(updated)
 
     await expect(service.changeStatus(id, { status: 'acknowledged' })).resolves.toBe(updated)
-    expect(repository.changeStatus).toHaveBeenCalledWith(id, 'open', { status: 'acknowledged' })
+    expect(repository.changeStatus).toHaveBeenCalledWith(id, ['open'], { status: 'acknowledged' })
     expect(repository.findById).not.toHaveBeenCalled()
   })
 
@@ -177,7 +177,7 @@ describe('OccurrencesService.changeStatus', () => {
 
     await service.changeStatus(id, change)
 
-    expect(repository.changeStatus).toHaveBeenCalledWith(id, 'acknowledged', change)
+    expect(repository.changeStatus).toHaveBeenCalledWith(id, ['acknowledged'], change)
   })
 
   it('404 quando o update não aplica e a ocorrência não existe', async () => {

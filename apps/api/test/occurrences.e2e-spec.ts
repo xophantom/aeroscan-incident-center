@@ -363,11 +363,21 @@ describe('Occurrences (e2e)', () => {
     })
 
     it.each([
-      ['pulo de etapa', 'open', { status: 'resolved', note: 'x' }],
-      ['transição reversa', 'acknowledged', { status: 'open' }],
-      ['mesmo status', 'open', { status: 'open' }],
-      ['saindo de resolved', 'resolved', { status: 'acknowledged' }],
-    ] as const)('409 em %s (%s → %j)', async (_case, from, body) => {
+      [
+        'pulo de etapa',
+        'open',
+        { status: 'resolved', note: 'x' },
+        'De open só é possível ir para acknowledged.',
+      ],
+      [
+        'transição reversa',
+        'acknowledged',
+        { status: 'open' },
+        'De acknowledged só é possível ir para resolved.',
+      ],
+      ['mesmo status', 'open', { status: 'open' }, 'De open só é possível ir para acknowledged.'],
+      ['saindo de resolved', 'resolved', { status: 'acknowledged' }, 'resolved é um status final.'],
+    ] as const)('409 em %s (%s → %j)', async (_case, from, body, hint) => {
       const { id } = await create()
       if (from !== 'open') await patch(id, { status: 'acknowledged' }).expect(200)
       if (from === 'resolved') await patch(id, { status: 'resolved', note: 'ok' }).expect(200)
@@ -376,6 +386,7 @@ describe('Occurrences (e2e)', () => {
 
       expect(errorOf(res)).toMatchObject({
         code: 'INVALID_STATUS_TRANSITION',
+        message: `Transição inválida: ${from} → ${body.status}. ${hint}`,
         details: { from, to: body.status },
       })
     })

@@ -1,7 +1,7 @@
 import {
+  allowedFrom,
   isTooFarInFuture,
   isTooOld,
-  previousStatus,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
   type UpdateStatusInput,
@@ -60,12 +60,11 @@ export class OccurrencesService {
   }
 
   async changeStatus(id: string, change: UpdateStatusInput): Promise<Occurrence> {
-    // Cada status tem um único antecessor válido; o update só aplica se o atual for ele
-    const from = previousStatus(change.status)
-    const updated = from ? await this.repository.changeStatus(id, from, change) : null
+    const from = allowedFrom(change.status)
+    const updated = from.length > 0 ? await this.repository.changeStatus(id, from, change) : null
     if (updated) return updated
 
-    // Não aplicou: o id não existe ou o status atual não permite a transição
+    // O update condicional não diz por que falhou: 404 se o id não existe, senão 409
     const current = await this.repository.findById(id)
     if (!current) throw occurrenceNotFound(id)
     throw invalidStatusTransition(current.status, change.status)

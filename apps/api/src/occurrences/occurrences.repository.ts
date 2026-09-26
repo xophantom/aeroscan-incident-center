@@ -139,21 +139,24 @@ export class OccurrencesRepository implements OnModuleInit {
     return doc && toOccurrence(doc)
   }
 
-  /** Update condicional: só aplica se o status ainda for `from` (dois "Reconhecer" não passam juntos). */
+  /**
+   * Update condicional: só aplica se o status atual for uma das origens `from`
+   * (dois "Reconhecer" simultâneos não passam juntos).
+   */
   async changeStatus(
     id: string,
-    from: OccurrenceStatus,
+    from: readonly OccurrenceStatus[],
     change: UpdateStatusInput,
   ): Promise<Occurrence | null> {
     if (!isObjectIdOrHexString(id)) return null
 
     const doc = await this.model
       .findOneAndUpdate(
-        { _id: id, status: from },
+        { _id: id, status: { $in: from } },
         {
           $set: {
             status: change.status,
-            // Saiu de open: alertas novos do mesmo site+tipo abrem outra ocorrência
+            // Deixou de ser a janela aberta do site+tipo: libera a vaga para uma ocorrência nova
             activeWindow: false,
             ...(change.status === 'resolved' ? { note: change.note } : {}),
           },

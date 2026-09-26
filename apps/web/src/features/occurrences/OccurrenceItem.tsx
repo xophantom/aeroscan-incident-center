@@ -1,4 +1,8 @@
-import { nextStatus, type OccurrenceResponse, type OccurrenceStatus } from '@aeroscan/shared'
+import {
+  STATUS_TRANSITIONS,
+  type OccurrenceResponse,
+  type OccurrenceStatus,
+} from '@aeroscan/shared'
 import { useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -27,7 +31,7 @@ export function OccurrenceItem({
   onResolve,
 }: OccurrenceItemProps) {
   const [resolving, setResolving] = useState(false)
-  const next = nextStatus(occurrence.status)
+  const next = STATUS_TRANSITIONS[occurrence.status]
   const repeated = occurrence.count > 1
 
   async function resolve(note: string) {
@@ -78,12 +82,12 @@ export function OccurrenceItem({
         </div>
 
         <div className="shrink-0">
-          {next === 'acknowledged' && (
+          {next.includes('acknowledged') && (
             <Button onClick={() => onAcknowledge(occurrence.id)} disabled={busy}>
               Reconhecer
             </Button>
           )}
-          {next === 'resolved' && !resolving && (
+          {next.includes('resolved') && !resolving && (
             <Button onClick={() => setResolving(true)} disabled={busy}>
               Resolver
             </Button>

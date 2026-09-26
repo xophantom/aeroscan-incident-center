@@ -1,4 +1,9 @@
-import { MAX_ALERT_AGE_MS, MAX_FUTURE_SKEW_MS, type OccurrenceStatus } from '@aeroscan/shared'
+import {
+  MAX_ALERT_AGE_MS,
+  MAX_FUTURE_SKEW_MS,
+  STATUS_TRANSITIONS,
+  type OccurrenceStatus,
+} from '@aeroscan/shared'
 import { HttpStatus } from '@nestjs/common'
 import { AppException } from '../common/errors/app.exception'
 
@@ -17,9 +22,14 @@ export function invalidStatusTransition(
   from: OccurrenceStatus,
   to: OccurrenceStatus,
 ): AppException {
+  const next = STATUS_TRANSITIONS[from]
+  const hint =
+    next.length > 0
+      ? `De ${from} só é possível ir para ${next.join(' ou ')}.`
+      : `${from} é um status final.`
   return new AppException(
     'INVALID_STATUS_TRANSITION',
-    `Transição inválida: ${from} → ${to}. O fluxo é open → acknowledged → resolved.`,
+    `Transição inválida: ${from} → ${to}. ${hint}`,
     HttpStatus.CONFLICT,
     { from, to },
   )
