@@ -56,4 +56,24 @@ describe('OccurrencesPage', () => {
     await waitFor(() => expect(acknowledgeB).toBeEnabled())
     expect(acknowledgeA).toBeDisabled()
   })
+
+  it('a lista recarregada após uma ação respeita o filtro trocado no meio dela', async () => {
+    const open = occurrence({ id: 'a' })
+    const resolved = occurrence({ id: 'r', siteId: 'site-r', status: 'resolved', note: 'ok' })
+    vi.mocked(listOccurrences).mockImplementation((status) =>
+      Promise.resolve(status === 'open' ? [open] : [open, resolved]),
+    )
+    const acknowledge = deferred<OccurrenceResponse>()
+    vi.mocked(updateOccurrenceStatus).mockReturnValue(acknowledge.promise)
+    const user = renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Reconhecer' }))
+    await user.click(screen.getByRole('button', { name: 'Todas' }))
+    expect(await screen.findByText('ok')).toBeInTheDocument()
+    acknowledge.resolve({ ...open, status: 'acknowledged' })
+
+    await waitFor(() => expect(listOccurrences).toHaveBeenCalledTimes(3))
+    expect(listOccurrences).toHaveBeenLastCalledWith(undefined)
+    expect(screen.getByText('ok')).toBeInTheDocument()
+  })
 })
