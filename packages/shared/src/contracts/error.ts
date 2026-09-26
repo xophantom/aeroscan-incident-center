@@ -15,7 +15,7 @@ const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number]
 
-/** Envelope único de erro da API. */
+/** Envelope de todo erro da API, exceto o 503 do /health, que responde { status, mongo }. */
 export const errorResponseSchema = z.object({
   error: z.object({
     code: z.enum(ERROR_CODES),

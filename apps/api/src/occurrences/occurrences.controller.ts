@@ -69,8 +69,19 @@ const ApiBodyErrors = () =>
     }),
   )
 
+// Todo 503 sai com Retry-After: o pedido pode ser repetido
+const ApiUnavailable = (description: string) =>
+  ApiServiceUnavailableResponse({
+    type: ErrorResponseDto,
+    description,
+    headers: {
+      'Retry-After': { description: 'Segundos até repetir', schema: { type: 'integer' } },
+    },
+  })
+
 @ApiTags('occurrences')
 @ApiUnprocessableEntityResponse({ type: ErrorResponseDto, description: 'Dados inválidos' })
+@ApiUnavailable('SERVICE_UNAVAILABLE: banco de dados indisponível')
 @Controller('occurrences')
 export class OccurrencesController {
   constructor(private readonly service: OccurrencesService) {}
@@ -79,10 +90,9 @@ export class OccurrencesController {
   @ApiOperation({ summary: 'Registra um alerta', description: REGISTER_DESCRIPTION })
   @ApiCreatedResponse({ type: OccurrenceResponseDto, description: 'Ocorrência criada' })
   @ApiOkResponse({ type: OccurrenceResponseDto, description: 'Agrupado em ocorrência existente' })
-  @ApiServiceUnavailableResponse({
-    type: ErrorResponseDto,
-    description: 'WRITE_CONFLICT: retentativas esgotadas sob concorrência (repita o pedido)',
-  })
+  @ApiUnavailable(
+    'Banco de dados indisponível (SERVICE_UNAVAILABLE) ou retentativas esgotadas sob concorrência (WRITE_CONFLICT)',
+  )
   @ApiBodyErrors()
   async create(
     @Body() body: CreateOccurrenceDto,
@@ -102,8 +112,16 @@ export class OccurrencesController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: `Muda o status (${VALID_TRANSITIONS}); resolved exige note` })
-  @ApiBody({ type: UpdateStatusBodyDto })
+  @ApiOperation({
+    summary: `Muda o status (${VALID_TRANSITIONS}); resolved exige note`,
+    description:
+      'A falta de note só é cobrada (422) depois de conferir existência (404) e transição (409).',
+  })
+  @ApiBody({
+    type: UpdateStatusBodyDto,
+    description:
+      'note só é lida em resolved. open é aceito, mas nenhuma transição leva a ele (409).',
+  })
   @ApiOkResponse({ type: OccurrenceResponseDto, description: 'Status alterado' })
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Ocorrência não encontrada' })
   @ApiConflictResponse({ type: ErrorResponseDto, description: 'Transição inválida' })

@@ -583,10 +583,10 @@ describe('Occurrences (e2e)', () => {
       expect(res.headers['x-powered-by']).toBeUndefined()
     })
 
-    it('Swagger: filtros da listagem opcionais e erros de corpo documentados', async () => {
+    it('Swagger: filtros da listagem opcionais e respostas de cada rota documentadas', async () => {
       interface Operation {
         parameters?: Array<{ name: string; required?: boolean }>
-        responses: Record<string, { description?: string }>
+        responses: Record<string, { description?: string; content?: unknown }>
       }
       const doc = (await t.http.get('/docs-json').expect(200)).body as {
         paths: Record<string, Record<string, Operation>>
@@ -594,18 +594,36 @@ describe('Occurrences (e2e)', () => {
       const list = doc.paths['/occurrences']?.['get']
       const register = doc.paths['/occurrences']?.['post']
       const changeStatus = doc.paths['/occurrences/{id}/status']?.['patch']
+      const health = doc.paths['/health']?.['get']
 
       expect(list?.parameters?.map((p) => [p.name, p.required ?? false])).toEqual([
         ['status', false],
         ['siteId', false],
       ])
-      expect(Object.keys(register?.responses ?? {})).toEqual(
-        expect.arrayContaining(['200', '201', '400', '413', '415', '422', '503']),
-      )
-      expect(Object.keys(changeStatus?.responses ?? {})).toEqual(
-        expect.arrayContaining(['200', '400', '404', '409', '413', '415', '422']),
-      )
-      expect(changeStatus?.responses['200']?.description).toBeTruthy()
+      expect(Object.keys(list?.responses ?? {}).sort()).toEqual(['200', '422', '503'])
+      expect(Object.keys(register?.responses ?? {}).sort()).toEqual([
+        '200',
+        '201',
+        '400',
+        '413',
+        '415',
+        '422',
+        '503',
+      ])
+      expect(Object.keys(changeStatus?.responses ?? {}).sort()).toEqual([
+        '200',
+        '400',
+        '404',
+        '409',
+        '413',
+        '415',
+        '422',
+        '503',
+      ])
+      expect(register?.responses['503']?.description).toContain('WRITE_CONFLICT')
+      expect(changeStatus?.responses['503']?.description).not.toContain('WRITE_CONFLICT')
+      expect(Object.keys(health?.responses ?? {}).sort()).toEqual(['200', '503'])
+      expect(health?.responses['503']?.content).toBeDefined()
     })
 
     it('GET / serve o front compilado', async () => {
