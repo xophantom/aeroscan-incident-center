@@ -3,7 +3,7 @@ import {
   OCCURRENCE_TYPES,
   TYPE_WEIGHT,
   computePriority,
-  dedupWindowStart,
+  dedupWindow,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
   type OccurrenceStatus,
@@ -34,12 +34,11 @@ const PRIORITY_EXPRESSION = {
   ],
 }
 
-/** Persistência das ocorrências: service e controller não conhecem Mongoose. */
 @Injectable()
 export class OccurrencesRepository implements OnModuleInit {
   constructor(@InjectModel(OCCURRENCE_MODEL) private readonly model: Model<OccurrenceDocument>) {}
 
-  // O índice único parcial é parte da corretude do dedup: precisa existir antes da 1ª requisição
+  // O índice único de versão é parte da corretude do dedup: precisa existir antes da 1ª requisição
   async onModuleInit(): Promise<void> {
     await this.model.syncIndexes()
     await this.reconcilePriorities()
@@ -52,19 +51,25 @@ export class OccurrencesRepository implements OnModuleInit {
     ])
   }
 
-  /**
-   * Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo detectada a partir do
-   * início da janela do alerta. Não exige a vaga ativa: um alerta fora de ordem acha a sua
-   * ocorrência mesmo que outra requisição já tenha liberado a vaga dela.
-   */
+  /** Versão das criações do site+tipo: o `seq` da última ocorrência criada, ou 0 se nenhuma. */
+  async creationVersion(alert: CreateOccurrenceInput): Promise<number> {
+    const last = await this.model
+      .findOne({ siteId: alert.siteId, type: alert.type }, { seq: 1 })
+      .sort({ seq: -1 })
+      .lean<Pick<OccurrenceDocument, 'seq'>>()
+    return last?.seq ?? 0
+  }
+
+  /** Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo dentro da janela do alerta. */
   async groupIntoOpenOccurrence(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+    const { from, to } = dedupWindow(alert.detectedAt)
     const doc = await this.model
       .findOneAndUpdate(
         {
           siteId: alert.siteId,
           type: alert.type,
           status: 'open',
-          detectedAt: { $gte: dedupWindowStart(alert.detectedAt) },
+          detectedAt: { $gte: from, $lte: to },
         },
         // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
         [
@@ -85,23 +90,10 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 
   /**
-   * Libera a vaga de janela ativa do site+tipo se ela venceu para este alerta. Fora de `open` a vaga
-   * já foi liberada no changeStatus, e uma ocupante ainda válida nunca é tocada.
+   * Cria a ocorrência na versão seguinte à lida. Se outra requisição criou uma ocorrência do site+tipo
+   * depois dessa leitura, a versão já existe (índice único → E11000) e retorna null.
    */
-  async closeStaleActiveWindow(alert: CreateOccurrenceInput): Promise<void> {
-    await this.model.updateOne(
-      {
-        siteId: alert.siteId,
-        type: alert.type,
-        activeWindow: true,
-        detectedAt: { $lt: dedupWindowStart(alert.detectedAt) },
-      },
-      { $set: { activeWindow: false } },
-    )
-  }
-
-  /** Abre uma janela nova. Retorna null se outra requisição abriu antes (índice único → E11000). */
-  async insertActive(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+  async insertAtVersion(alert: CreateOccurrenceInput, version: number): Promise<Occurrence | null> {
     try {
       const doc = await this.model.create({
         siteId: alert.siteId,
@@ -114,7 +106,7 @@ export class OccurrencesRepository implements OnModuleInit {
         note: null,
         detectedAt: alert.detectedAt,
         lastDetectedAt: alert.detectedAt,
-        activeWindow: true,
+        seq: version + 1,
       })
       return toOccurrence(doc.toObject())
     } catch (error) {
@@ -156,8 +148,6 @@ export class OccurrencesRepository implements OnModuleInit {
         {
           $set: {
             status: change.status,
-            // Deixou de ser a janela aberta do site+tipo: libera a vaga para uma ocorrência nova
-            activeWindow: false,
             ...(change.status === 'resolved' ? { note: change.note } : {}),
           },
         },
@@ -173,7 +163,6 @@ function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 11000
 }
 
-// `activeWindow` é detalhe do dedup e não sai do repository
-function toOccurrence({ _id, activeWindow, ...fields }: LeanOccurrence): Occurrence {
+function toOccurrence({ _id, seq, ...fields }: LeanOccurrence): Occurrence {
   return { id: _id.toHexString(), ...fields }
 }

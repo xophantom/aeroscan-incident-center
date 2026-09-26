@@ -71,7 +71,7 @@ describe('Occurrences (e2e)', () => {
         lastDetectedAt: T0.toISOString(),
       })
       expect(created.id).toMatch(/^[0-9a-f]{24}$/)
-      expect(created).not.toHaveProperty('activeWindow')
+      expect(created).not.toHaveProperty('seq')
     })
 
     it('agrupa alerta repetido na janela: 200, count +1, severity +1, prioridade recalculada', async () => {
@@ -162,21 +162,41 @@ describe('Occurrences (e2e)', () => {
       await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS) })).expect(201)
     })
 
-    it('corrida fora de ordem: agrupa na ocorrência aberta mesmo após outra requisição liberar a vaga dela', async () => {
+    it('corrida: quem leu a versão antes de outra criação não cria duplicata', async () => {
+      const repository = t.app.get(OccurrencesRepository)
+      const slow = { ...alert(), severity: 1, detectedAt: T0 }
+      const version = await repository.creationVersion(slow)
+      expect(await repository.groupIntoOpenOccurrence(slow)).toBeNull()
+
+      // Enquanto a requisição lenta está entre a busca e o insert, outras criam em T0 e em T0+15
       const first = await create()
-      t.clock.advance(20 * MINUTE_MS)
-      // Passo intermediário de um alerta de T0+20 min: a vaga ativa de `first` venceu para ele
-      await t.app.get(OccurrencesRepository).closeStaleActiveWindow({
-        siteId: 'site-a',
-        droneId: 'drone-2',
-        type: 'intrusion',
-        severity: 1,
-        detectedAt: t.clock.now(),
-      })
+      t.clock.advance(15 * MINUTE_MS)
+      await create()
 
-      const res = await post(alert({ detectedAt: at(5) })).expect(200)
-
+      expect(await repository.insertAtVersion(slow, version)).toBeNull()
+      const res = await post(alert({ detectedAt: at(0) })).expect(200)
       expect(res.body).toMatchObject({ id: first.id, count: 2 })
+    })
+
+    it('concorrência fora de ordem: alertas de T0 e T0+15 min em paralelo viram 2 ocorrências, sem 409', async () => {
+      t.clock.advance(15 * MINUTE_MS)
+
+      for (let round = 0; round < 5; round++) {
+        const siteId = `stress-${round}`
+        const bodies = Array.from({ length: 40 }, (_, i) =>
+          alert({ siteId, detectedAt: at(i % 2 === 0 ? 0 : 15) }),
+        )
+
+        const responses = await Promise.all(bodies.map((body) => post(body)))
+
+        expect(responses.map((r) => r.status).sort()).toEqual([
+          ...Array<number>(38).fill(200),
+          201,
+          201,
+        ])
+        const counts = (await list(`?siteId=${siteId}`)).map((o) => o.count)
+        expect(counts).toEqual([20, 20])
+      }
     })
 
     it('alerta fora de ordem agrupa na ocorrência cuja janela o contém, não na mais recente', async () => {
@@ -190,11 +210,10 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toMatchObject({ id: first.id, count: 2 })
     })
 
-    it('alerta atrasado (dentro de 24 h) agrupa na ocorrência aberta do site+tipo', async () => {
+    it('alerta atrasado até 10 min antes da ocorrência agrupa nela; detectedAt continua o da abertura', async () => {
       const open = await create()
-      const late = new Date(T0.getTime() - 3 * HOUR_MS).toISOString()
 
-      const res = await post(alert({ detectedAt: late })).expect(200)
+      const res = await post(alert({ detectedAt: at(-DEDUP_WINDOW_MS / MINUTE_MS) })).expect(200)
 
       expect(res.body).toMatchObject({
         id: open.id,
@@ -202,6 +221,15 @@ describe('Occurrences (e2e)', () => {
         detectedAt: T0.toISOString(),
         lastDetectedAt: T0.toISOString(),
       })
+    })
+
+    it('alerta mais atrasado que a janela abre outra ocorrência', async () => {
+      const open = await create()
+
+      const late = await create({ detectedAt: new Date(T0.getTime() - 3 * HOUR_MS).toISOString() })
+
+      expect(late.id).not.toBe(open.id)
+      expect((await list()).map((o) => o.count)).toEqual([1, 1])
     })
 
     it('422 com envelope e detalhes por campo para body inválido', async () => {

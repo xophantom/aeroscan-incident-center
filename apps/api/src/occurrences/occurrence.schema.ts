@@ -5,11 +5,8 @@ import type { Occurrence } from './occurrence'
 export const OCCURRENCE_MODEL = 'Occurrence'
 
 export interface OccurrenceDocument extends Omit<Occurrence, 'id'> {
-  /**
-   * Vaga única de criação por site+tipo (índice único parcial). Sai de true quando a ocorrência
-   * deixa `open` ou quando um alerta posterior a encontra vencida.
-   */
-  activeWindow: boolean
+  /** Ordem de criação no site+tipo (1, 2, 3...): a versão do controle otimista do dedup. */
+  seq: number
 }
 
 export type LeanOccurrence = OccurrenceDocument & { _id: Types.ObjectId }
@@ -27,7 +24,7 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
     note: { type: String, default: null },
     detectedAt: { type: Date, required: true },
     lastDetectedAt: { type: Date, required: true },
-    activeWindow: { type: Boolean, required: true },
+    seq: { type: Number, min: 1, required: true },
   },
   { collection: 'occurrences', timestamps: true, versionKey: false },
 )
@@ -40,8 +37,8 @@ OccurrenceSchema.index({ siteId: 1, priority: -1, detectedAt: -1 }) // ?siteId= 
 // Busca do agrupamento: site, tipo e status por igualdade; detectedAt como faixa e ordenação
 OccurrenceSchema.index({ siteId: 1, type: 1, status: 1, detectedAt: 1 })
 
-// Garantia do dedup sob concorrência: no máximo uma janela ativa por site+tipo
+// Controle otimista do dedup: duas criações do mesmo site+tipo não gravam a mesma versão
 OccurrenceSchema.index(
-  { siteId: 1, type: 1 },
-  { name: 'uniq_active_window', unique: true, partialFilterExpression: { activeWindow: true } },
+  { siteId: 1, type: 1, seq: 1 },
+  { name: 'uniq_creation_version', unique: true },
 )

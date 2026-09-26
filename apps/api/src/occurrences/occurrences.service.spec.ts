@@ -37,9 +37,9 @@ function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
 type RepositoryMock = jest.Mocked<
   Pick<
     OccurrencesRepository,
+    | 'creationVersion'
     | 'groupIntoOpenOccurrence'
-    | 'closeStaleActiveWindow'
-    | 'insertActive'
+    | 'insertAtVersion'
     | 'list'
     | 'findById'
     | 'changeStatus'
@@ -48,9 +48,9 @@ type RepositoryMock = jest.Mocked<
 
 function setup() {
   const repository: RepositoryMock = {
+    creationVersion: jest.fn().mockResolvedValue(0),
     groupIntoOpenOccurrence: jest.fn().mockResolvedValue(null),
-    closeStaleActiveWindow: jest.fn().mockResolvedValue(undefined),
-    insertActive: jest.fn().mockResolvedValue(null),
+    insertAtVersion: jest.fn().mockResolvedValue(null),
     list: jest.fn().mockResolvedValue([]),
     findById: jest.fn().mockResolvedValue(null),
     changeStatus: jest.fn().mockResolvedValue(null),
@@ -81,29 +81,31 @@ describe('OccurrencesService.register', () => {
     repository.groupIntoOpenOccurrence.mockResolvedValue(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
-    expect(repository.insertActive).not.toHaveBeenCalled()
+    expect(repository.insertAtVersion).not.toHaveBeenCalled()
   })
 
-  it('cria quando não há ocorrência na janela, liberando a vaga vencida antes do insert', async () => {
+  it('lê a versão antes de buscar e cria na versão seguinte à lida', async () => {
     const { service, repository } = setup()
     const created = occurrence()
-    repository.insertActive.mockResolvedValue(created)
+    repository.creationVersion.mockResolvedValue(4)
+    repository.insertAtVersion.mockResolvedValue(created)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: created, created: true })
 
-    expect(firstCallOrder(repository.closeStaleActiveWindow)).toBeLessThan(
-      firstCallOrder(repository.insertActive),
+    expect(repository.insertAtVersion).toHaveBeenCalledWith(alert, 4)
+    expect(firstCallOrder(repository.creationVersion)).toBeLessThan(
+      firstCallOrder(repository.groupIntoOpenOccurrence),
     )
   })
 
-  it('perdeu a corrida no insert (E11000): volta a agrupar na janela que o outro criou', async () => {
+  it('perdeu a corrida no insert (E11000): relê a versão e agrupa no que a outra requisição criou', async () => {
     const { service, repository } = setup()
     const grouped = occurrence({ count: 2 })
     repository.groupIntoOpenOccurrence.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
-    expect(repository.groupIntoOpenOccurrence).toHaveBeenCalledTimes(2)
-    expect(repository.insertActive).toHaveBeenCalledTimes(1)
+    expect(repository.creationVersion).toHaveBeenCalledTimes(2)
+    expect(repository.insertAtVersion).toHaveBeenCalledTimes(1)
   })
 
   it(`desiste após ${MAX_DEDUP_ATTEMPTS} tentativas com WRITE_CONFLICT (409)`, async () => {
@@ -113,47 +115,22 @@ describe('OccurrencesService.register', () => {
 
     expect(error.code).toBe('WRITE_CONFLICT')
     expect(error.getStatus()).toBe(409)
-    expect(repository.insertActive).toHaveBeenCalledTimes(MAX_DEDUP_ATTEMPTS)
+    expect(repository.insertAtVersion).toHaveBeenCalledTimes(MAX_DEDUP_ATTEMPTS)
   })
 
-  it('rejeita detectedAt no futuro (422) sem tocar no banco', async () => {
+  it.each([
+    ['no futuro além da tolerância', MAX_FUTURE_SKEW_MS + 1_000],
+    ['com mais de 24 h de atraso', -MAX_ALERT_AGE_MS - 1_000],
+  ])('rejeita detectedAt %s (422) sem tocar no banco', async (_case, offset) => {
     const { service, repository } = setup()
-    const future = new Date(NOW.getTime() + MAX_FUTURE_SKEW_MS + 1_000)
 
-    const error = await appError(service.register({ ...alert, detectedAt: future }))
+    const error = await appError(
+      service.register({ ...alert, detectedAt: new Date(NOW.getTime() + offset) }),
+    )
 
     expect(error.code).toBe('VALIDATION_ERROR')
     expect(error.getStatus()).toBe(422)
-    expect(repository.groupIntoOpenOccurrence).not.toHaveBeenCalled()
-  })
-
-  it('aceita até 1 min à frente (desvio de relógio do drone)', async () => {
-    const { service, repository } = setup()
-    repository.insertActive.mockResolvedValue(occurrence())
-
-    await expect(
-      service.register({ ...alert, detectedAt: new Date(NOW.getTime() + MAX_FUTURE_SKEW_MS) }),
-    ).resolves.toMatchObject({ created: true })
-  })
-
-  it('rejeita detectedAt com mais de 24 h de atraso (422) sem tocar no banco', async () => {
-    const { service, repository } = setup()
-    const tooOld = new Date(NOW.getTime() - MAX_ALERT_AGE_MS - 1_000)
-
-    const error = await appError(service.register({ ...alert, detectedAt: tooOld }))
-
-    expect(error.code).toBe('VALIDATION_ERROR')
-    expect(error.getStatus()).toBe(422)
-    expect(repository.groupIntoOpenOccurrence).not.toHaveBeenCalled()
-  })
-
-  it('aceita até 24 h de atraso (entrega atrasada)', async () => {
-    const { service, repository } = setup()
-    repository.insertActive.mockResolvedValue(occurrence())
-
-    await expect(
-      service.register({ ...alert, detectedAt: new Date(NOW.getTime() - MAX_ALERT_AGE_MS) }),
-    ).resolves.toMatchObject({ created: true })
+    expect(repository.creationVersion).not.toHaveBeenCalled()
   })
 })
 
