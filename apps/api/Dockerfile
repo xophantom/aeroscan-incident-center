@@ -21,6 +21,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
   pnpm install --frozen-lockfile --prod --filter @aeroscan/api...
 
 FROM deps AS build
+COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN pnpm --filter @aeroscan/shared build && pnpm --filter @aeroscan/api build

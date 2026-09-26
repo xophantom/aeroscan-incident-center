@@ -61,6 +61,9 @@ function setup() {
   return { service, repository }
 }
 
+const firstCallOrder = (fn: { mock: { invocationCallOrder: number[] } }) =>
+  fn.mock.invocationCallOrder[0] ?? Number.NaN
+
 async function appError(promise: Promise<unknown>): Promise<AppException> {
   try {
     await promise
@@ -88,9 +91,9 @@ describe('OccurrencesService.register', () => {
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: created, created: true })
 
-    const [closeOrder] = repository.closeStaleWindows.mock.invocationCallOrder
-    const [insertOrder] = repository.insertActive.mock.invocationCallOrder
-    expect(closeOrder).toBeLessThan(insertOrder)
+    expect(firstCallOrder(repository.closeStaleWindows)).toBeLessThan(
+      firstCallOrder(repository.insertActive),
+    )
   })
 
   it('perdeu a corrida no insert (E11000): volta a agrupar na janela que o outro criou', async () => {
