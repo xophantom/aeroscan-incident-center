@@ -15,6 +15,10 @@ import { AppConfig } from '../../config/app-config'
             : undefined,
           // O healthcheck da imagem bate a cada 10 s: não polui o log de acesso
           autoLogging: { ignore: (req) => req.url === '/health' },
+          // A causa de um 5xx o filtro de exceções já registra; o log de acesso dispensa o erro
+          // sintético ("failed with status code") que o pino-http anexa, com o stack dele
+          customErrorObject: (_req, _res, _error, { err, ...rest }: Record<string, unknown>) =>
+            rest,
         },
       }),
     }),
