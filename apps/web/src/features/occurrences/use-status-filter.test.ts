@@ -7,16 +7,16 @@ beforeEach(() => {
 })
 
 describe('useStatusFilter', () => {
-  it('abre em "open" sem parâmetro na URL', () => {
+  it('abre em "active" sem parâmetro na URL', () => {
     const { result } = renderHook(() => useStatusFilter())
 
-    expect(result.current[0]).toBe('open')
+    expect(result.current[0]).toBe('active')
   })
 
   it.each([
     ['?status=resolved', 'resolved'],
     ['?status=all', 'all'],
-    ['?status=qualquer', 'open'],
+    ['?status=qualquer', 'active'],
   ])('lê %s da URL como %s', (search, expected) => {
     window.history.replaceState(null, '', `/${search}`)
 
@@ -31,7 +31,7 @@ describe('useStatusFilter', () => {
     act(() => result.current[1]('all'))
     expect(window.location.search).toBe('?status=all')
 
-    act(() => result.current[1]('open'))
+    act(() => result.current[1]('active'))
     expect(window.location.search).toBe('')
   })
 
@@ -39,7 +39,7 @@ describe('useStatusFilter', () => {
     const { result } = renderHook(() => useStatusFilter())
     const before = window.history.length
 
-    act(() => result.current[1]('open'))
+    act(() => result.current[1]('active'))
 
     expect(window.history.length).toBe(before)
   })

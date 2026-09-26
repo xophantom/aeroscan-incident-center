@@ -1,9 +1,11 @@
-import type { OccurrenceResponse, OccurrenceStatus } from '@aeroscan/shared'
+import type { OccurrenceResponse } from '@aeroscan/shared'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../lib/api/client'
 import { listOccurrences } from '../../lib/api/occurrences'
 import { deferred, occurrence } from '../../test/fixtures'
 import { useOccurrences } from './use-occurrences'
+import type { StatusFilterValue } from './use-status-filter'
 
 vi.mock('../../lib/api/occurrences')
 
@@ -20,21 +22,52 @@ describe('useOccurrences', () => {
       .mockReturnValueOnce(resolvedList.promise)
     const resolvedItem = occurrence({ id: 'r', status: 'resolved' })
 
-    const { result, rerender } = renderHook(({ status }) => useOccurrences(status), {
-      initialProps: { status: 'open' as OccurrenceStatus | undefined },
+    const { result, rerender } = renderHook(({ filter }) => useOccurrences(filter), {
+      initialProps: { filter: 'open' as StatusFilterValue },
     })
-    rerender({ status: 'resolved' })
+    rerender({ filter: 'resolved' })
 
     resolvedList.resolve([resolvedItem])
-    await waitFor(() =>
-      expect(result.current.state).toEqual({ kind: 'success', items: [resolvedItem] }),
-    )
+    await waitFor(() => expect(result.current.state).toMatchObject({ items: [resolvedItem] }))
 
     await act(async () => {
       openList.resolve([occurrence({ id: 'o' })])
       await openList.promise
     })
 
-    expect(result.current.state).toEqual({ kind: 'success', items: [resolvedItem] })
+    expect(result.current.state).toMatchObject({ items: [resolvedItem] })
+  })
+
+  it('"Ativas" busca sem filtro de status e esconde as resolvidas', async () => {
+    const open = occurrence({ id: 'o' })
+    const acknowledged = occurrence({ id: 'a', status: 'acknowledged' })
+    vi.mocked(listOccurrences).mockResolvedValue([
+      open,
+      acknowledged,
+      occurrence({ id: 'r', status: 'resolved' }),
+    ])
+
+    const { result } = renderHook(() => useOccurrences('active'))
+
+    await waitFor(() => expect(result.current.state).toMatchObject({ items: [open, acknowledged] }))
+    expect(listOccurrences).toHaveBeenCalledWith(undefined)
+  })
+
+  it('falha ao atualizar mantém a lista na tela e avisa', async () => {
+    const items = [occurrence()]
+    vi.mocked(listOccurrences)
+      .mockResolvedValueOnce(items)
+      .mockRejectedValueOnce(new ApiError('Não foi possível conectar à API.', 'NETWORK_ERROR'))
+    const { result } = renderHook(() => useOccurrences('all'))
+    await waitFor(() => expect(result.current.state.kind).toBe('success'))
+
+    await act(() => result.current.refetch())
+
+    expect(result.current.state).toEqual({
+      kind: 'success',
+      items,
+      refreshError: 'Não foi possível conectar à API.',
+    })
+    expect(result.current.refreshing).toBe(false)
   })
 })

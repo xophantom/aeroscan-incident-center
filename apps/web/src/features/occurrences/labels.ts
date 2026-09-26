@@ -15,6 +15,7 @@ export const STATUS_LABEL: Record<OccurrenceStatus, string> = {
 }
 
 export const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilterValue; label: string }> = [
+  { value: 'active', label: 'Ativas' },
   { value: 'open', label: 'Abertas' },
   { value: 'acknowledged', label: 'Reconhecidas' },
   { value: 'resolved', label: 'Resolvidas' },

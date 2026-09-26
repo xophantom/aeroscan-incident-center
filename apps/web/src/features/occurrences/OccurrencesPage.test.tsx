@@ -25,17 +25,17 @@ beforeEach(() => {
 })
 
 describe('OccurrencesPage', () => {
-  it('abre filtrando as abertas; "Todas" consulta sem filtro', async () => {
+  it('abre em "Ativas"; "Abertas" consulta só as abertas', async () => {
     vi.mocked(listOccurrences).mockResolvedValue([])
     const user = renderPage()
 
-    expect(await screen.findByText('Nenhuma ocorrência em "abertas".')).toBeInTheDocument()
-    expect(listOccurrences).toHaveBeenLastCalledWith('open')
-
-    await user.click(screen.getByRole('button', { name: 'Todas' }))
-
-    expect(await screen.findByText('Nenhuma ocorrência registrada.')).toBeInTheDocument()
+    expect(await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')).toBeInTheDocument()
     expect(listOccurrences).toHaveBeenLastCalledWith(undefined)
+
+    await user.click(screen.getByRole('button', { name: 'Abertas' }))
+
+    expect(await screen.findByText('Nenhuma ocorrência aberta.')).toBeInTheDocument()
+    expect(listOccurrences).toHaveBeenLastCalledWith('open')
   })
 
   it('ações em itens diferentes não liberam o botão uma da outra', async () => {
@@ -60,22 +60,47 @@ describe('OccurrencesPage', () => {
 
   it('a lista recarregada após uma ação respeita o filtro trocado no meio dela', async () => {
     const open = occurrence({ id: 'a' })
-    const resolved = occurrence({ id: 'r', siteId: 'site-r', status: 'resolved', note: 'ok' })
-    vi.mocked(listOccurrences).mockImplementation((status) =>
-      Promise.resolve(status === 'open' ? [open] : [open, resolved]),
-    )
+    vi.mocked(listOccurrences).mockResolvedValue([open])
     const acknowledge = deferred<OccurrenceResponse>()
     vi.mocked(updateOccurrenceStatus).mockReturnValue(acknowledge.promise)
     const user = renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Reconhecer' }))
-    await user.click(screen.getByRole('button', { name: 'Todas' }))
-    expect(await screen.findByText('ok')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Abertas' }))
+    await waitFor(() => expect(listOccurrences).toHaveBeenLastCalledWith('open'))
     acknowledge.resolve({ ...open, status: 'acknowledged' })
 
     await waitFor(() => expect(listOccurrences).toHaveBeenCalledTimes(3))
-    expect(listOccurrences).toHaveBeenLastCalledWith(undefined)
-    expect(screen.getByText('ok')).toBeInTheDocument()
+    expect(listOccurrences).toHaveBeenLastCalledWith('open')
+  })
+
+  it('falha de rede ao resolver mantém a lista e a nota digitada', async () => {
+    const offline = new ApiError('Não foi possível conectar à API.', 'NETWORK_ERROR')
+    vi.mocked(listOccurrences)
+      .mockResolvedValueOnce([occurrence({ status: 'acknowledged' })])
+      .mockRejectedValue(offline)
+    vi.mocked(updateOccurrenceStatus).mockRejectedValue(offline)
+    const user = renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Resolver' }))
+    await user.type(screen.getByLabelText('Nota de resolução'), 'equipe verificou')
+    await user.click(screen.getByRole('button', { name: 'Confirmar resolução' }))
+
+    expect(await screen.findByText(/Não foi possível atualizar a lista/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Nota de resolução')).toHaveValue('equipe verificou')
+  })
+
+  it('"Atualizar" mostra que está atualizando', async () => {
+    const refresh = deferred<OccurrenceResponse[]>()
+    vi.mocked(listOccurrences).mockResolvedValueOnce([]).mockReturnValueOnce(refresh.promise)
+    const user = renderPage()
+    await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar' }))
+
+    expect(screen.getByRole('button', { name: 'Atualizando…' })).toBeDisabled()
+    refresh.resolve([])
+    expect(await screen.findByRole('button', { name: 'Atualizar' })).toBeEnabled()
   })
 
   it('409 de transição vira a situação atual da ocorrência (outro gestor agiu antes)', async () => {

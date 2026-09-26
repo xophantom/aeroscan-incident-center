@@ -50,6 +50,7 @@ export async function apiRequest<T>(
   if (response.ok) {
     const parsed = schema.safeParse(payload)
     if (parsed.success) return parsed.data
+    console.error(`Resposta de ${path} fora do contrato da API`, parsed.error.issues)
   } else if (isErrorResponse(payload)) {
     const { code, message, details } = payload.error
     throw new ApiError(message, code, details)

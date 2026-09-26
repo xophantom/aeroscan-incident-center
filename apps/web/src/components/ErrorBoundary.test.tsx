@@ -1,10 +1,14 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorBoundary } from './ErrorBoundary'
 
 function Broken(): never {
   throw new Error('quebrou')
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('ErrorBoundary', () => {
   it('mostra uma mensagem no lugar da tela que quebrou', () => {

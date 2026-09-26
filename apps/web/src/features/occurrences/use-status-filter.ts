@@ -1,11 +1,11 @@
 import { isOccurrenceStatus, type OccurrenceStatus } from '@aeroscan/shared'
 import { useCallback, useEffect, useState } from 'react'
 
-export type StatusFilterValue = OccurrenceStatus | 'all'
+export type StatusFilterValue = OccurrenceStatus | 'active' | 'all'
 
 const PARAM = 'status'
-// A triagem abre no que ainda pede ação; "Todas" fica a um clique
-const DEFAULT_FILTER: StatusFilterValue = 'open'
+// A triagem abre no que ainda pede ação: abertas (Reconhecer) e reconhecidas (Resolver)
+const DEFAULT_FILTER: StatusFilterValue = 'active'
 
 function readFromUrl(): StatusFilterValue {
   const value = new URLSearchParams(window.location.search).get(PARAM)

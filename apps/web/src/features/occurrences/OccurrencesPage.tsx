@@ -4,11 +4,11 @@ import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/toast/toast-context'
 import { ApiError, errorMessage } from '../../lib/api/client'
 import { updateOccurrenceStatus } from '../../lib/api/occurrences'
-import { STATUS_FILTERS, STATUS_LABEL } from './labels'
+import { STATUS_LABEL } from './labels'
 import { OccurrenceList } from './OccurrenceList'
 import { StatusFilter } from './StatusFilter'
 import { useOccurrences } from './use-occurrences'
-import { useStatusFilter } from './use-status-filter'
+import { useStatusFilter, type StatusFilterValue } from './use-status-filter'
 
 // O 409 da API cita os status em inglês; na tela, vira a situação que o gestor enxerga
 function statusChangeError(error: unknown): string {
@@ -21,10 +21,15 @@ function statusChangeError(error: unknown): string {
   return errorMessage(error)
 }
 
+function emptyMessage(filter: StatusFilterValue): string {
+  if (filter === 'active') return 'Nenhuma ocorrência aberta ou reconhecida.'
+  if (filter === 'all') return 'Nenhuma ocorrência registrada.'
+  return `Nenhuma ocorrência ${STATUS_LABEL[filter].toLowerCase()}.`
+}
+
 export function OccurrencesPage() {
   const [filter, setFilter] = useStatusFilter()
-  const status = filter === 'all' ? undefined : filter
-  const { state, refetch } = useOccurrences(status)
+  const { state, refreshing, refetch } = useOccurrences(filter)
   const toast = useToast()
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
 
@@ -49,8 +54,6 @@ export function OccurrencesPage() {
     }
   }
 
-  const filterLabel = STATUS_FILTERS.find((f) => f.value === filter)?.label.toLowerCase()
-
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -61,8 +64,8 @@ export function OccurrencesPage() {
             Mais urgentes primeiro: prioridade = severidade × peso do tipo.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => void refetch()}>
-          Atualizar
+        <Button variant="secondary" onClick={() => void refetch()} disabled={refreshing}>
+          {refreshing ? 'Atualizando…' : 'Atualizar'}
         </Button>
       </header>
 
@@ -73,9 +76,7 @@ export function OccurrencesPage() {
       <OccurrenceList
         state={state}
         pendingIds={pendingIds}
-        emptyMessage={
-          status ? `Nenhuma ocorrência em "${filterLabel}".` : 'Nenhuma ocorrência registrada.'
-        }
+        emptyMessage={emptyMessage(filter)}
         onRetry={() => void refetch()}
         onAcknowledge={(id) =>
           void changeStatus(id, { status: 'acknowledged' }, 'Ocorrência reconhecida.')

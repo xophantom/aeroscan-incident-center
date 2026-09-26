@@ -39,26 +39,37 @@ export function OccurrenceList({
     )
   }
 
-  if (state.items.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-        {emptyMessage}
-      </p>
-    )
-  }
-
-  // Já vem ordenada pela API (prioridade desc; empate → mais recente)
   return (
-    <ul className="space-y-3">
-      {state.items.map((occurrence) => (
-        <OccurrenceItem
-          key={occurrence.id}
-          occurrence={occurrence}
-          busy={pendingIds.has(occurrence.id)}
-          onAcknowledge={onAcknowledge}
-          onResolve={onResolve}
-        />
-      ))}
-    </ul>
+    <>
+      {state.refreshError && (
+        <div
+          role="alert"
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900"
+        >
+          <span>Não foi possível atualizar a lista: {state.refreshError}</span>
+          <Button variant="secondary" onClick={onRetry}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+      {state.items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+          {emptyMessage}
+        </p>
+      ) : (
+        // Já vem ordenada pela API (prioridade desc; empate → mais recente)
+        <ul className="space-y-3">
+          {state.items.map((occurrence) => (
+            <OccurrenceItem
+              key={occurrence.id}
+              occurrence={occurrence}
+              busy={pendingIds.has(occurrence.id)}
+              onAcknowledge={onAcknowledge}
+              onResolve={onResolve}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

@@ -22,6 +22,7 @@ async function apiError(promise: Promise<unknown>): Promise<ApiError> {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('apiRequest', () => {
@@ -31,12 +32,17 @@ describe('apiRequest', () => {
     await expect(apiRequest('/occurrences', itemsSchema)).resolves.toEqual([{ id: 'a' }])
   })
 
-  it('resposta 2xx fora do contrato vira UNEXPECTED_RESPONSE', async () => {
+  it('resposta 2xx fora do contrato vira UNEXPECTED_RESPONSE e registra o desvio', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     stubFetch(json(null, 200))
 
     const error = await apiError(apiRequest('/occurrences', itemsSchema))
 
     expect(error.code).toBe('UNEXPECTED_RESPONSE')
+    expect(log).toHaveBeenCalledWith(
+      'Resposta de /occurrences fora do contrato da API',
+      expect.any(Array),
+    )
   })
 
   it('converte o envelope de erro da API em ApiError', async () => {
