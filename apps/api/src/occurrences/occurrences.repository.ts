@@ -15,8 +15,15 @@ import { isObjectIdOrHexString, type FilterQuery, type Model } from 'mongoose'
 import type { Occurrence } from './occurrence'
 import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from './occurrence.schema'
 
-/** Prioridade desc; empate → detecção mais recente primeiro. */
-export const LIST_ORDER = { priority: -1, detectedAt: -1 } as const
+/** Prioridade desc; empate → detecção mais recente; por fim `_id`, para a ordem ser estável. */
+export const LIST_ORDER = { priority: -1, detectedAt: -1, _id: -1 } as const
+
+export function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocument> {
+  return {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.siteId ? { siteId: filter.siteId } : {}),
+  }
+}
 
 // severity × peso do tipo calculado pelo Mongo (a mesma fórmula de computePriority)
 const PRIORITY_EXPRESSION = {
@@ -116,12 +123,7 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 
   async list(filter: OccurrenceFilter): Promise<Occurrence[]> {
-    const query: FilterQuery<OccurrenceDocument> = {}
-    if (filter.status) query.status = filter.status
-    if (filter.siteId) query.siteId = filter.siteId
-
-    const docs = await this.model.find(query).sort(LIST_ORDER).lean<LeanOccurrence[]>()
-
+    const docs = await this.model.find(listFilter(filter)).sort(LIST_ORDER).lean<LeanOccurrence[]>()
     return docs.map(toOccurrence)
   }
 

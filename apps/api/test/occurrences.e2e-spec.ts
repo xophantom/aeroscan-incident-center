@@ -6,9 +6,17 @@ import {
   MINUTE_MS,
   type CreateOccurrenceBody,
   type ErrorResponse,
+  type OccurrenceFilter,
   type OccurrenceResponse,
 } from '@aeroscan/shared'
-import { LIST_ORDER, OccurrencesRepository } from '../src/occurrences/occurrences.repository'
+import { getModelToken } from '@nestjs/mongoose'
+import type { Model } from 'mongoose'
+import { OCCURRENCE_MODEL, type OccurrenceDocument } from '../src/occurrences/occurrence.schema'
+import {
+  LIST_ORDER,
+  OccurrencesRepository,
+  listFilter,
+} from '../src/occurrences/occurrences.repository'
 import { T0, createTestApp, type TestApp } from './support/create-test-app'
 
 const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE_MS).toISOString()
@@ -363,22 +371,31 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).message).toBe('siteId deve ser um texto')
     })
 
-    it.each([{}, { status: 'open' }, { siteId: 'site-a' }, { status: 'open', siteId: 'site-a' }])(
-      'filtro %j usa índice e não ordena em memória',
-      async (filter) => {
-        await create()
+    it.each<OccurrenceFilter>([
+      {},
+      { status: 'open' },
+      { siteId: 'site-a' },
+      { status: 'open', siteId: 'site-a' },
+    ])('filtro %j usa índice e não ordena em memória', async (filter) => {
+      await create()
+      const model = t.app.get<Model<OccurrenceDocument>>(getModelToken(OCCURRENCE_MODEL))
 
-        const { queryPlanner } = (await t.connection
-          .collection('occurrences')
-          .find(filter)
-          .sort(LIST_ORDER)
-          .explain('queryPlanner')) as { queryPlanner: { winningPlan: unknown } }
-        const plan = JSON.stringify(queryPlanner.winningPlan)
+      const explain = (await model
+        .find(listFilter(filter))
+        .sort(LIST_ORDER)
+        .explain('queryPlanner')) as unknown as { queryPlanner: { winningPlan: unknown } }
+      const plan = JSON.stringify(explain.queryPlanner.winningPlan)
 
-        expect(plan).toContain('"stage":"IXSCAN"')
-        expect(plan).not.toContain('"stage":"SORT"')
-      },
-    )
+      expect(plan).toContain('"stage":"IXSCAN"')
+      expect(plan).not.toContain('"stage":"SORT"')
+    })
+
+    it('empate total (prioridade e detecção): a criada por último primeiro, em ordem estável', async () => {
+      const older = await create({ siteId: 'site-a' })
+      const newer = await create({ siteId: 'site-b' })
+
+      expect((await list()).map((o) => o.id)).toEqual([newer.id, older.id])
+    })
   })
 
   describe('PATCH /occurrences/:id/status', () => {
