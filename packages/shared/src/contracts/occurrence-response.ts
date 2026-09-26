@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { OCCURRENCE_STATUSES, OCCURRENCE_TYPES } from '../domain/occurrence.js'
+import {
+  MAX_SEVERITY,
+  MIN_SEVERITY,
+  OCCURRENCE_STATUSES,
+  OCCURRENCE_TYPES,
+} from '../domain/occurrence.js'
 
 export const occurrenceResponseSchema = z.object({
   id: z.string(),
@@ -7,7 +12,7 @@ export const occurrenceResponseSchema = z.object({
   droneId: z.string(),
   droneIds: z.array(z.string()),
   type: z.enum(OCCURRENCE_TYPES),
-  severity: z.number().int(),
+  severity: z.number().int().min(MIN_SEVERITY).max(MAX_SEVERITY),
   priority: z.number().int(),
   status: z.enum(OCCURRENCE_STATUSES),
   count: z.number().int(),
