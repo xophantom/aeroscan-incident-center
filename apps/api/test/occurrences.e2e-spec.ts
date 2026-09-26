@@ -266,6 +266,12 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).message).toBe('O corpo da requisição deve ser um objeto JSON')
     })
 
+    it('400 no envelope para id com escape % inválido na URL', async () => {
+      const res = await patch('%E0%A4%A', { status: 'acknowledged' }).expect(400)
+
+      expect(errorOf(res).code).toBe('BAD_REQUEST')
+    })
+
     it('400 no envelope para JSON malformado', async () => {
       const res = await t.http
         .post('/occurrences')
