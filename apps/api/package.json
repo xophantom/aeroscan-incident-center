@@ -2,9 +2,6 @@
   "name": "@aeroscan/api",
   "version": "0.0.0",
   "private": true,
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch --preserveWatchOutput --exec \"node --watch\"",
