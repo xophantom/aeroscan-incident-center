@@ -16,7 +16,8 @@
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "demo:concurrency": "tsx scripts/demo-concurrency.ts"
+    "demo:concurrency": "tsx scripts/demo-concurrency.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
     "prettier": "^3.9.9",

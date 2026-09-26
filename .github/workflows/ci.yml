@@ -67,7 +67,7 @@ jobs:
       - run: pnpm --filter @aeroscan/api test:e2e
 
   build:
-    name: Build (frontend-dist + Docker)
+    name: Build (frontend-dist + Docker) e smoke da imagem
     runs-on: ubuntu-latest
     env:
       MONGOMS_DISABLE_POSTINSTALL: '1'
@@ -82,10 +82,15 @@ jobs:
       - run: pnpm build:web
       - name: frontend-dist/ versionado está atualizado
         run: |
-          git diff --exit-code -- frontend-dist
           if [ -n "$(git status --porcelain -- frontend-dist)" ]; then
             echo "::error::frontend-dist/ desatualizado. Rode 'pnpm build:web' e commite o resultado."
             git status --porcelain -- frontend-dist
             exit 1
           fi
       - run: docker compose build
+      # Os testes usam o src do shared; aqui roda a imagem de verdade (shared ESM via require)
+      - run: docker compose up -d --wait
+      - run: pnpm smoke
+      - run: pnpm demo:concurrency 20
+      - if: failure()
+        run: docker compose logs api
