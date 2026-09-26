@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import { AppModule } from './app.module'
@@ -5,17 +6,15 @@ import { AppConfig } from './config/app-config'
 import { APP_OPTIONS, configureApp } from './configure-app'
 
 async function bootstrap(): Promise<void> {
-  // Falha no boot (ex.: Mongo inacessível) encerra com o erro, sem o process.abort padrão do Nest
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    ...APP_OPTIONS,
-    abortOnError: false,
-  })
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, APP_OPTIONS)
   configureApp(app)
   await app.listen(app.get(AppConfig).port, '0.0.0.0')
 }
 
+// Falhas ao montar os módulos (ex.: Mongo inacessível) o Nest registra e encerra sozinho; as do
+// listen (onModuleInit, porta ocupada) chegam aqui com os logs do boot retidos pelo bufferLogs.
 bootstrap().catch((error: unknown) => {
-  // O Nest já registrou o erro com o stack; aqui só a causa, sem o dump da rejeição não tratada
-  console.error(`Falha ao iniciar a API: ${error instanceof Error ? error.message : String(error)}`)
+  Logger.flush()
+  console.error('Falha ao iniciar a API:', error)
   process.exit(1)
 })
