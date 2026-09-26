@@ -80,7 +80,8 @@ function toErrorReply(exception: unknown): ErrorReply {
   return reply(status, 'INTERNAL_ERROR', 'Erro interno do servidor')
 }
 
-// http-errors do body-parser (400, 413, 415) não são HttpException: o status vem no campo `status`
+// http-errors do body-parser (400, 413, 415) e o URIError do router (escape % inválido no id)
+// não são HttpException: o status vem no campo `status`
 function httpStatusOf(exception: unknown): number {
   if (exception instanceof HttpException) return exception.getStatus()
 
