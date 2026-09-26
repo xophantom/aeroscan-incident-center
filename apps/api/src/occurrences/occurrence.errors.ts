@@ -1,5 +1,5 @@
 import {
-  HOUR_MS,
+  DAY_MS,
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
   MINUTE_MS,
@@ -43,7 +43,7 @@ export function detectedAtInFuture(): AppException {
 
 export function detectedAtTooOld(): AppException {
   return invalidDetectedAt(
-    `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / HOUR_MS} h de atraso`,
+    `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / DAY_MS} dias de atraso`,
   )
 }
 

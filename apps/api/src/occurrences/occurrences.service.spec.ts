@@ -115,7 +115,7 @@ describe('OccurrencesService.register', () => {
 
   it.each([
     ['no futuro além da tolerância', MAX_FUTURE_SKEW_MS + 1_000],
-    ['com mais de 24 h de atraso', -MAX_ALERT_AGE_MS - 1_000],
+    ['com mais de 7 dias de atraso', -MAX_ALERT_AGE_MS - 1_000],
   ])('rejeita detectedAt %s (422) sem tocar no banco', async (_case, offset) => {
     const { service, repository } = setup()
 

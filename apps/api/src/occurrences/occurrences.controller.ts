@@ -1,6 +1,6 @@
 import {
+  DAY_MS,
   DEDUP_WINDOW_MS,
-  HOUR_MS,
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
   MAX_SEVERITY,
@@ -53,7 +53,7 @@ const REGISTER_DESCRIPTION =
   `Agrupa na ocorrência aberta mais antiga do mesmo siteId + type detectada até ` +
   `${DEDUP_WINDOW_MS / MINUTE_MS} min antes ou depois do alerta (count +1, severity +1 até ` +
   `${MAX_SEVERITY}) e responde 200; senão cria e responde 201. detectedAt vale de ` +
-  `${MAX_ALERT_AGE_MS / HOUR_MS} h atrás até ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min à frente.`
+  `${MAX_ALERT_AGE_MS / DAY_MS} dias atrás até ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min à frente.`
 const VALID_TRANSITIONS = Object.entries(STATUS_TRANSITIONS)
   .flatMap(([from, targets]) => targets.map((to) => `${from} → ${to}`))
   .join(', ')

@@ -1,4 +1,4 @@
-import { HOUR_MS, MINUTE_MS } from './time.js'
+import { DAY_MS, MINUTE_MS } from './time.js'
 
 export const OCCURRENCE_TYPES = [
   'intrusion',
@@ -16,8 +16,8 @@ export const MAX_SEVERITY = 5
 
 // Tolera pequena diferença de relógio entre drone e servidor
 export const MAX_FUTURE_SKEW_MS = MINUTE_MS
-// Aceita entrega atrasada (drone sem sinal), mas não um alerta arbitrariamente antigo
-export const MAX_ALERT_AGE_MS = 24 * HOUR_MS
+// Aceita entrega atrasada (drone dias sem sinal), mas não um alerta arbitrariamente antigo
+export const MAX_ALERT_AGE_MS = 7 * DAY_MS
 
 export function isOccurrenceStatus(value: unknown): value is OccurrenceStatus {
   return OCCURRENCE_STATUSES.includes(value as OccurrenceStatus)

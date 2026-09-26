@@ -156,7 +156,7 @@ describe('Occurrences (e2e)', () => {
         MAX_FUTURE_SKEW_MS + 1_000,
         'detectedAt não pode estar mais de 1 min no futuro',
       ],
-      ['atrasado', -MAX_ALERT_AGE_MS - 1_000, 'detectedAt não pode ter mais de 24 h de atraso'],
+      ['atrasado', -MAX_ALERT_AGE_MS - 1_000, 'detectedAt não pode ter mais de 7 dias de atraso'],
     ])('422 para detectedAt %s além do limite', async (_case, offset, message) => {
       const detectedAt = new Date(T0.getTime() + offset).toISOString()
 

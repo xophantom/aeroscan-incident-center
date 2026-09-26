@@ -31,12 +31,12 @@ describe('limites de detectedAt', () => {
     expect(isTooFarInFuture(plus(MAX_FUTURE_SKEW_MS + 1), now)).toBe(true)
   })
 
-  it('isTooOld aceita até 24 h de atraso', () => {
+  it('isTooOld aceita até 7 dias de atraso', () => {
     expect(isTooOld(now, now)).toBe(false)
     expect(isTooOld(plus(-MAX_ALERT_AGE_MS), now)).toBe(false)
   })
 
-  it('isTooOld rejeita além de 24 h', () => {
+  it('isTooOld rejeita além de 7 dias', () => {
     expect(isTooOld(plus(-MAX_ALERT_AGE_MS - 1), now)).toBe(true)
   })
 })
