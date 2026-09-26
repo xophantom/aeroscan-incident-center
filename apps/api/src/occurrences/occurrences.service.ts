@@ -1,5 +1,6 @@
 import {
   isTooFarInFuture,
+  isTooOld,
   previousStatus,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
@@ -10,6 +11,7 @@ import { ClockService } from '../infra/clock/clock.service'
 import type { Occurrence } from './occurrence'
 import {
   detectedAtInFuture,
+  detectedAtTooOld,
   invalidStatusTransition,
   occurrenceNotFound,
   writeConflict,
@@ -36,7 +38,9 @@ export class OccurrencesService {
    * Perder a corrida no insert significa que a janela agora existe: basta tentar agrupar de novo.
    */
   async register(alert: CreateOccurrenceInput): Promise<RegisterResult> {
-    if (isTooFarInFuture(alert.detectedAt, this.clock.now())) throw detectedAtInFuture()
+    const now = this.clock.now()
+    if (isTooFarInFuture(alert.detectedAt, now)) throw detectedAtInFuture()
+    if (isTooOld(alert.detectedAt, now)) throw detectedAtTooOld()
 
     for (let attempt = 1; attempt <= MAX_DEDUP_ATTEMPTS; attempt++) {
       const grouped = await this.repository.groupIntoActiveWindow(alert)

@@ -14,6 +14,8 @@ export const MAX_SEVERITY = 5
 
 // Tolera pequena diferença de relógio entre drone e servidor
 export const MAX_FUTURE_SKEW_MS = 60 * 1000
+// Aceita entrega atrasada (drone sem sinal), mas não um alerta arbitrariamente antigo
+export const MAX_ALERT_AGE_MS = 24 * 60 * 60 * 1000
 
 export function isOccurrenceStatus(value: unknown): value is OccurrenceStatus {
   return OCCURRENCE_STATUSES.includes(value as OccurrenceStatus)
@@ -21,4 +23,8 @@ export function isOccurrenceStatus(value: unknown): value is OccurrenceStatus {
 
 export function isTooFarInFuture(detectedAt: Date, now: Date): boolean {
   return detectedAt.getTime() - now.getTime() > MAX_FUTURE_SKEW_MS
+}
+
+export function isTooOld(detectedAt: Date, now: Date): boolean {
+  return now.getTime() - detectedAt.getTime() > MAX_ALERT_AGE_MS
 }

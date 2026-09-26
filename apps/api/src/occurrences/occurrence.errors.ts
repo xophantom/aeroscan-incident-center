@@ -1,6 +1,9 @@
-import type { OccurrenceStatus } from '@aeroscan/shared'
+import { MAX_ALERT_AGE_MS, MAX_FUTURE_SKEW_MS, type OccurrenceStatus } from '@aeroscan/shared'
 import { HttpStatus } from '@nestjs/common'
 import { AppException } from '../common/errors/app.exception'
+
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
 
 export function occurrenceNotFound(id: string): AppException {
   return new AppException(
@@ -23,7 +26,18 @@ export function invalidStatusTransition(
 }
 
 export function detectedAtInFuture(): AppException {
-  const message = 'detectedAt não pode estar no futuro'
+  return invalidDetectedAt(
+    `detectedAt não pode estar mais de ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min no futuro`,
+  )
+}
+
+export function detectedAtTooOld(): AppException {
+  return invalidDetectedAt(
+    `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / HOUR_MS} h de atraso`,
+  )
+}
+
+function invalidDetectedAt(message: string): AppException {
   return new AppException('VALIDATION_ERROR', message, HttpStatus.UNPROCESSABLE_ENTITY, [
     { path: 'detectedAt', message },
   ])

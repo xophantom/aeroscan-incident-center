@@ -1,4 +1,4 @@
-import type { CreateOccurrenceInput } from '@aeroscan/shared'
+import { MAX_ALERT_AGE_MS, type CreateOccurrenceInput } from '@aeroscan/shared'
 import { AppException } from '../common/errors/app.exception'
 import type { ClockService } from '../infra/clock/clock.service'
 import type { Occurrence } from './occurrence'
@@ -133,6 +133,26 @@ describe('OccurrencesService.register', () => {
 
     await expect(
       service.register({ ...alert, detectedAt: new Date(NOW.getTime() + 60_000) }),
+    ).resolves.toMatchObject({ created: true })
+  })
+
+  it('rejeita detectedAt com mais de 24 h de atraso (422) sem tocar no banco', async () => {
+    const { service, repository } = setup()
+    const tooOld = new Date(NOW.getTime() - MAX_ALERT_AGE_MS - 1_000)
+
+    const error = await appError(service.register({ ...alert, detectedAt: tooOld }))
+
+    expect(error.code).toBe('VALIDATION_ERROR')
+    expect(error.getStatus()).toBe(422)
+    expect(repository.groupIntoActiveWindow).not.toHaveBeenCalled()
+  })
+
+  it('aceita até 24 h de atraso (entrega atrasada)', async () => {
+    const { service, repository } = setup()
+    repository.insertActive.mockResolvedValue(occurrence())
+
+    await expect(
+      service.register({ ...alert, detectedAt: new Date(NOW.getTime() - MAX_ALERT_AGE_MS) }),
     ).resolves.toMatchObject({ created: true })
   })
 })

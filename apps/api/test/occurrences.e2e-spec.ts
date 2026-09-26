@@ -1,5 +1,6 @@
 import {
   DEDUP_WINDOW_MS,
+  MAX_ALERT_AGE_MS,
   MAX_SEVERITY,
   type CreateOccurrenceBody,
   type ErrorResponse,
@@ -139,10 +140,36 @@ describe('Occurrences (e2e)', () => {
       const res = await post(alert({ detectedAt: future(MINUTE + 1_000) })).expect(422)
       expect(errorOf(res)).toMatchObject({
         code: 'VALIDATION_ERROR',
-        message: 'detectedAt não pode estar no futuro',
+        message: 'detectedAt não pode estar mais de 1 min no futuro',
       })
 
       await post(alert({ detectedAt: future(MINUTE) })).expect(201)
+    })
+
+    it('422 para detectedAt com mais de 24 h de atraso; aceita no limite', async () => {
+      const past = (ms: number) => new Date(T0.getTime() - ms).toISOString()
+
+      const res = await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS + 1_000) })).expect(422)
+      expect(errorOf(res)).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: 'detectedAt não pode ter mais de 24 h de atraso',
+      })
+
+      await post(alert({ detectedAt: past(MAX_ALERT_AGE_MS) })).expect(201)
+    })
+
+    it('alerta atrasado (dentro de 24 h) agrupa na ocorrência aberta do site+tipo', async () => {
+      const open = await create()
+      const late = new Date(T0.getTime() - 3 * 60 * MINUTE).toISOString()
+
+      const res = await post(alert({ detectedAt: late })).expect(200)
+
+      expect(res.body).toMatchObject({
+        id: open.id,
+        count: 2,
+        detectedAt: T0.toISOString(),
+        lastDetectedAt: T0.toISOString(),
+      })
     })
 
     it('422 com envelope e detalhes por campo para body inválido', async () => {
