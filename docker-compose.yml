@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3000
-      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/aeroscan}
+      MONGO_URI: mongodb://mongo:27017/aeroscan
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - '${API_PORT:-3000}:3000'
