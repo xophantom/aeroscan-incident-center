@@ -1,4 +1,4 @@
-import { type ArgumentsHost, HttpStatus, Logger } from '@nestjs/common'
+import { type ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common'
 import type { MongoHealth } from '../../infra/mongo/mongo-health'
 import { AllExceptionsFilter } from './all-exceptions.filter'
 import { AppException } from './app.exception'
@@ -74,6 +74,13 @@ describe('AllExceptionsFilter', () => {
     )
 
     expect(response.statusCode).toBe(422)
+  })
+
+  it('4xx sem mapeamento sai como 400, com código e status coerentes', () => {
+    const response = respond(new HttpException('teapot', HttpStatus.I_AM_A_TEAPOT))
+
+    expect(response.statusCode).toBe(400)
+    expect(response.body).toMatchObject({ error: { code: 'BAD_REQUEST' } })
   })
 
   it('erro desconhecido vira 500 sem expor a mensagem interna', () => {

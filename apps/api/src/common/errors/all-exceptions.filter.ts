@@ -77,7 +77,8 @@ function toErrorReply(exception: unknown): ErrorReply {
   const status = httpStatusOf(exception)
   const known = HTTP_ERRORS[status]
   if (known) return reply(status, known.code, known.message)
-  if (status < 500) return reply(status, 'BAD_REQUEST', 'Requisição inválida')
+  // Outros 4xx do framework não ocorrem nestas rotas; se ocorrerem, saem como 400
+  if (status < 500) return reply(HttpStatus.BAD_REQUEST, 'BAD_REQUEST', 'Requisição inválida')
   return reply(status, 'INTERNAL_ERROR', 'Erro interno do servidor')
 }
 

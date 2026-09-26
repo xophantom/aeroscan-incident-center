@@ -561,10 +561,11 @@ describe('Occurrences (e2e)', () => {
   })
 
   describe('infra', () => {
-    it('GET /health reporta o Mongo', async () => {
+    it('GET /health reporta o Mongo, sem anunciar o framework', async () => {
       const res = await t.http.get('/health').expect(200)
 
       expect(res.body).toEqual({ status: 'ok', mongo: 'up' })
+      expect(res.headers['x-powered-by']).toBeUndefined()
     })
 
     it('Swagger: filtros da listagem opcionais e erros de corpo documentados', async () => {

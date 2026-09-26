@@ -11,6 +11,7 @@ export const APP_OPTIONS: NestApplicationOptions = { bufferLogs: true, bodyParse
 /** Configuração compartilhada entre main.ts e os testes e2e. */
 export function configureApp(app: NestExpressApplication): NestExpressApplication {
   app.useLogger(app.get(Logger))
+  app.disable('x-powered-by')
   // Aceita qualquer JSON: corpo que não é objeto vira 422 da validação, não 400 do parser
   app.useBodyParser('json', { strict: false })
   // Servido pela API ou pelo proxy do Vite, o front é mesma origem; só o file:// (Origin: null)
