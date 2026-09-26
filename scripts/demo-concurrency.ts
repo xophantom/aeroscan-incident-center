@@ -1,5 +1,5 @@
-// Dispara N POSTs idênticos e simultâneos contra a API no ar e confere que viram 1 ocorrência
-// com count N.
+// Dispara N alertas simultâneos do mesmo site e tipo, cada um de um drone, contra a API no ar e
+// confere que viram 1 ocorrência com count N. (Alertas idênticos seriam reenvios e contariam 1.)
 // Uso: pnpm demo:concurrency [N]   (API_URL=http://localhost:3000 por padrão)
 
 const apiUrl = (process.env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
@@ -11,22 +11,24 @@ if (!Number.isInteger(total) || total < 1) {
 
 // Site único por execução, para não agrupar com rodadas anteriores
 const siteId = `demo-${Date.now()}`
-const alert = {
-  siteId,
-  droneId: 'drone-demo',
-  type: 'intrusion',
-  severity: 1,
-  detectedAt: new Date().toISOString(),
-}
+const detectedAt = new Date().toISOString()
 
-console.log(`→ ${total} POSTs idênticos e simultâneos em ${apiUrl}/occurrences (siteId=${siteId})`)
+console.log(
+  `→ ${total} alertas simultâneos em ${apiUrl}/occurrences (siteId=${siteId}, um por drone)`,
+)
 
 const statuses = await Promise.all(
-  Array.from({ length: total }, async () => {
+  Array.from({ length: total }, async (_, i) => {
     const res = await fetch(`${apiUrl}/occurrences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(alert),
+      body: JSON.stringify({
+        siteId,
+        droneId: `drone-demo-${i + 1}`,
+        type: 'intrusion',
+        severity: 1,
+        detectedAt,
+      }),
     })
     return res.status
   }),

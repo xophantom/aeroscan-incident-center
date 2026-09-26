@@ -2,6 +2,7 @@ import {
   DEDUP_WINDOW_MS,
   MAX_ALERT_AGE_MS,
   MAX_FUTURE_SKEW_MS,
+  alertKey,
   allowedFrom,
   canTransition,
   isTooFarInFuture,
@@ -21,10 +22,10 @@ import {
   resolutionNoteRequired,
   writeConflict,
 } from './occurrence.errors'
-import { OccurrencesRepository } from './occurrences.repository'
+import { DuplicateAlertError, OccurrencesRepository } from './occurrences.repository'
 
-// Cada E11000 é uma ocorrência que outra requisição abriu no mesmo site+tipo, a mais de 10 min das
-// outras abertas. Sem mudanças de status no meio, cabem no máximo estas no intervalo aceito de
+// Cada conflito de versão é uma ocorrência que outra requisição abriu no mesmo site+tipo, a mais de
+// 10 min das outras abertas. Sem mudanças de status no meio, cabem no máximo estas no intervalo aceito de
 // detectedAt, e a tentativa depois da última agrupa ou cria.
 const MAX_CONCURRENT_CREATIONS =
   Math.floor((MAX_ALERT_AGE_MS + MAX_FUTURE_SKEW_MS) / DEDUP_WINDOW_MS) + 1
@@ -43,23 +44,31 @@ export class OccurrencesService {
   ) {}
 
   /**
-   * Agrupa o alerta numa ocorrência aberta do mesmo site+tipo dentro da janela ou cria uma nova.
+   * Agrupa o alerta numa ocorrência do mesmo site+tipo dentro da janela ou cria uma nova.
    * "Buscar e depois inserir" tem corrida; o controle é otimista: a versão de criações do site+tipo
    * é lida antes da busca, e a criação grava a versão seguinte sob índice único. Se outra requisição
    * criar no meio, o insert falha (E11000) e o alerta volta a buscar, já enxergando a criação nova.
+   * A chave do alerta é gravada junto, sob outro índice único: se ele já foi contado, é reenvio, e a
+   * resposta é a ocorrência em que ele entrou, sem mudança.
    */
   async register(alert: CreateOccurrenceInput): Promise<RegisterResult> {
     const now = this.clock.now()
     if (isTooFarInFuture(alert.detectedAt, now)) throw detectedAtInFuture()
     if (isTooOld(alert.detectedAt, now)) throw detectedAtTooOld()
 
-    for (let attempt = 1; attempt <= MAX_DEDUP_ATTEMPTS; attempt++) {
-      const version = await this.repository.creationVersion(alert)
-      const grouped = await this.repository.groupIntoOpenOccurrence(alert)
-      if (grouped) return { occurrence: grouped, created: false }
+    const key = alertKey(alert)
+    try {
+      for (let attempt = 1; attempt <= MAX_DEDUP_ATTEMPTS; attempt++) {
+        const version = await this.repository.creationVersion(alert)
+        const grouped = await this.repository.groupIntoOccurrence(alert, key)
+        if (grouped) return { occurrence: grouped, created: false }
 
-      const created = await this.repository.insertAtVersion(alert, version)
-      if (created) return { occurrence: created, created: true }
+        const created = await this.repository.insertAtVersion(alert, version, key)
+        if (created) return { occurrence: created, created: true }
+      }
+    } catch (error) {
+      if (!(error instanceof DuplicateAlertError)) throw error
+      return { occurrence: await this.repository.findByAlertKey(key), created: false }
     }
 
     throw writeConflict()
@@ -73,7 +82,7 @@ export class OccurrencesService {
     const from = allowedFrom(change.status)
     const complete = change.status !== 'resolved' || change.note !== undefined
     if (from.length > 0 && complete) {
-      const updated = await this.repository.changeStatus(id, from, change)
+      const updated = await this.repository.changeStatus(id, from, change, this.clock.now())
       if (updated) return updated
     }
 

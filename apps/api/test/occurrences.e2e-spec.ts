@@ -7,6 +7,7 @@ import {
   MINUTE_MS,
   MIN_SEVERITY,
   OCCURRENCE_TYPES,
+  alertKey,
   computePriority,
   occurrenceResponseSchema,
   type CreateOccurrenceBody,
@@ -116,7 +117,7 @@ describe('Occurrences (e2e)', () => {
       t.clock.advance(DEDUP_WINDOW_MS + 1_000)
 
       const second = await create()
-      const grouped = await post(alert()).expect(200)
+      const grouped = await post(alert({ droneId: 'drone-2' })).expect(200)
 
       expect(second.id).not.toBe(first.id)
       expect(grouped.body).toMatchObject({ id: second.id, count: 2 })
@@ -124,14 +125,73 @@ describe('Occurrences (e2e)', () => {
       expect(byId.get(first.id)?.count).toBe(1)
     })
 
-    it('não agrupa com ocorrência acknowledged: o alerta novo abre outra', async () => {
+    it('alerta detectado depois do reconhecimento abre outra ocorrência', async () => {
       const first = await create()
+      t.clock.advance(MINUTE_MS)
       await patch(first.id, { status: 'acknowledged' }).expect(200)
+      t.clock.advance(MINUTE_MS)
 
       const second = await create()
 
       expect(second.id).not.toBe(first.id)
       expect(await list('?status=open')).toEqual([second])
+    })
+
+    it.each([
+      ['reconhecida', [{ status: 'acknowledged' }]],
+      ['resolvida', [{ status: 'acknowledged' }, { status: 'resolved', note: 'verificado' }]],
+    ] as const)(
+      'alerta atrasado, detectado antes do reconhecimento, entra na ocorrência %s sem reabrir',
+      async (_case, changes) => {
+        const handled = await create({ severity: 2 })
+        t.clock.advance(5 * MINUTE_MS)
+        for (const change of changes) await patch(handled.id, change).expect(200)
+
+        // Detectado 2 min depois da abertura, antes do reconhecimento; chega só agora
+        const late = alert({ droneId: 'drone-2', detectedAt: at(2) })
+        const res = await post(late).expect(200)
+
+        expect(res.body).toMatchObject({
+          id: handled.id,
+          status: changes.at(-1)?.status,
+          count: 2,
+          severity: 2,
+          droneIds: ['drone-1', 'drone-2'],
+          lastDetectedAt: at(2),
+        })
+        expect(await list()).toHaveLength(1)
+      },
+    )
+
+    it('reenvio do mesmo alerta responde 200 com a ocorrência dele e não conta de novo', async () => {
+      const body = alert()
+      const created = await create()
+
+      const resent = await post(body).expect(200)
+
+      expect(resent.body).toMatchObject({ id: created.id, count: 1, severity: created.severity })
+      expect(await list()).toMatchObject([{ id: created.id, count: 1 }])
+    })
+
+    it('reenvio de um alerta já agrupado devolve a ocorrência sem contar de novo', async () => {
+      const created = await create()
+      t.clock.advance(MINUTE_MS)
+      const second = alert({ droneId: 'drone-2' })
+      await post(second).expect(200)
+
+      const resent = await post(second).expect(200)
+
+      expect(resent.body).toMatchObject({ id: created.id, count: 2 })
+    })
+
+    it('reenvios simultâneos do mesmo alerta contam uma vez só', async () => {
+      const body = alert()
+
+      const responses = await Promise.all(Array.from({ length: 10 }, () => post(body)))
+
+      expect(responses.filter((r) => r.status === 201)).toHaveLength(1)
+      expect(responses.filter((r) => r.status === 200)).toHaveLength(9)
+      expect(await list()).toMatchObject([{ count: 1 }])
     })
 
     it('não agrupa site ou tipo diferentes', async () => {
@@ -144,8 +204,8 @@ describe('Occurrences (e2e)', () => {
 
     it('severidade trava em 5', async () => {
       await create({ severity: 4 })
-      await post(alert()).expect(200)
-      const res = await post(alert()).expect(200)
+      await post(alert({ droneId: 'drone-2' })).expect(200)
+      const res = await post(alert({ droneId: 'drone-3' })).expect(200)
 
       expect(res.body).toMatchObject({ count: 3, severity: MAX_SEVERITY, priority: 15 })
     })
@@ -167,17 +227,19 @@ describe('Occurrences (e2e)', () => {
 
     it('corrida: quem leu a versão antes de outra criação não cria duplicata', async () => {
       const repository = t.app.get(OccurrencesRepository)
-      const slow = { ...alert(), severity: 1, detectedAt: T0 }
+      const slowBody = alert({ droneId: 'drone-lento', severity: 1, detectedAt: at(0) })
+      const slow = { ...slowBody, detectedAt: T0 }
+      const key = alertKey(slow)
       const version = await repository.creationVersion(slow)
-      expect(await repository.groupIntoOpenOccurrence(slow)).toBeNull()
+      expect(await repository.groupIntoOccurrence(slow, key)).toBeNull()
 
       // Enquanto a requisição lenta está entre a busca e o insert, outras criam em T0 e em T0+15
       const first = await create()
       t.clock.advance(15 * MINUTE_MS)
       await create()
 
-      expect(await repository.insertAtVersion(slow, version)).toBeNull()
-      const res = await post(alert({ detectedAt: at(0) })).expect(200)
+      expect(await repository.insertAtVersion(slow, version, key)).toBeNull()
+      const res = await post(slowBody).expect(200)
       expect(res.body).toMatchObject({ id: first.id, count: 2 })
     })
 
@@ -185,7 +247,9 @@ describe('Occurrences (e2e)', () => {
       const windows = Array.from({ length: 40 }, (_, k) => k * 11)
       t.clock.advance((windows.at(-1) ?? 0) * MINUTE_MS)
       const bodies = windows.flatMap((minutes) =>
-        Array.from({ length: 3 }, () => alert({ siteId: 'burst', detectedAt: at(minutes) })),
+        Array.from({ length: 3 }, (_, d) =>
+          alert({ siteId: 'burst', droneId: `drone-${d + 1}`, detectedAt: at(minutes) }),
+        ),
       )
 
       const responses = await Promise.all(bodies.map((body) => post(body)))
@@ -298,12 +362,14 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).code).toBe('UNSUPPORTED_MEDIA_TYPE')
     })
 
-    it('concorrência: 20 POSTs idênticos em paralelo → 1 ocorrência com count 20', async () => {
+    it('concorrência: 20 drones alertando juntos → 1 ocorrência com count 20', async () => {
       const total = 20
       const initialSeverity = 1
-      const body = alert({ severity: initialSeverity })
+      const bodies = Array.from({ length: total }, (_, d) =>
+        alert({ droneId: `drone-${d + 1}`, severity: initialSeverity }),
+      )
 
-      const responses = await Promise.all(Array.from({ length: total }, () => post(body)))
+      const responses = await Promise.all(bodies.map((body) => post(body)))
 
       const statuses = responses.map((r) => r.status)
       expect(statuses.filter((s) => s === 201)).toHaveLength(1)
@@ -576,7 +642,7 @@ describe('Occurrences (e2e)', () => {
           const siteId = `formula-${type}-${severity}`
           await create({ siteId, type, severity })
 
-          const res = await post(alert({ siteId, type, severity })).expect(200)
+          const res = await post(alert({ siteId, type, severity, droneId: 'drone-2' })).expect(200)
 
           expect(res.body).toMatchObject({ priority: computePriority(severity + 1, type) })
         }

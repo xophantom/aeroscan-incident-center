@@ -50,9 +50,11 @@ import { OccurrencesService } from './occurrences.service'
 
 // Textos do Swagger derivados das regras, para não ficarem desatualizados
 const REGISTER_DESCRIPTION =
-  `Agrupa na ocorrência aberta mais antiga do mesmo siteId + type detectada até ` +
-  `${DEDUP_WINDOW_MS / MINUTE_MS} min antes ou depois do alerta (count +1, severity +1 até ` +
-  `${MAX_SEVERITY}) e responde 200; senão cria e responde 201. detectedAt vale de ` +
+  `Agrupa na ocorrência mais antiga do mesmo siteId + type detectada até ` +
+  `${DEDUP_WINDOW_MS / MINUTE_MS} min antes ou depois do alerta e responde 200: aberta (count +1, ` +
+  `severity +1 até ${MAX_SEVERITY}) ou já reconhecida, se o alerta foi detectado antes do ` +
+  `reconhecimento (só count +1). Senão, cria e responde 201. O reenvio do mesmo alerta (siteId, ` +
+  `droneId, type e detectedAt iguais) responde 200 sem contar de novo. detectedAt vale de ` +
   `${MAX_ALERT_AGE_MS / DAY_MS} dias atrás até ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min à frente.`
 const VALID_TRANSITIONS = Object.entries(STATUS_TRANSITIONS)
   .flatMap(([from, targets]) => targets.map((to) => `${from} → ${to}`))
@@ -89,7 +91,10 @@ export class OccurrencesController {
   @Post()
   @ApiOperation({ summary: 'Registra um alerta', description: REGISTER_DESCRIPTION })
   @ApiCreatedResponse({ type: OccurrenceResponseDto, description: 'Ocorrência criada' })
-  @ApiOkResponse({ type: OccurrenceResponseDto, description: 'Agrupado em ocorrência existente' })
+  @ApiOkResponse({
+    type: OccurrenceResponseDto,
+    description: 'Agrupado em ocorrência existente, ou reenvio de alerta já contado',
+  })
   @ApiUnavailable(
     'Banco de dados indisponível (SERVICE_UNAVAILABLE) ou retentativas esgotadas sob concorrência (WRITE_CONFLICT)',
   )

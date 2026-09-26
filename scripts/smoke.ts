@@ -1,5 +1,5 @@
 // Confere a API no ar do jeito que ela é entregue (build real, não o src que o Jest usa):
-// front servido, health, validação com detalhes por campo e o ciclo de status.
+// front servido, health, validação com detalhes por campo, agrupamento, reenvio e o ciclo de status.
 // Uso: pnpm smoke   (API_URL=http://localhost:3000 por padrão)
 
 const apiUrl = (process.env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
@@ -63,12 +63,14 @@ const checks: Array<[string, () => Promise<void>]> = [
     },
   ],
   [
-    'POST cria, repetido agrupa, e o status vai até resolved',
+    'POST cria, outro drone agrupa, reenvio não conta, e o status vai até resolved',
     async () => {
       const created = await request('/occurrences', 'POST', alert)
       assert(created.status === 201, created)
-      const grouped = await request('/occurrences', 'POST', alert)
+      const grouped = await request('/occurrences', 'POST', { ...alert, droneId: 'drone-smoke-2' })
       assert(grouped.status === 200 && (grouped.body as { count: number }).count === 2, grouped)
+      const resent = await request('/occurrences', 'POST', alert)
+      assert(resent.status === 200 && (resent.body as { count: number }).count === 2, resent)
 
       const { id } = created.body as { id: string }
       const acknowledged = await request(`/occurrences/${id}/status`, 'PATCH', {

@@ -15,6 +15,9 @@ import { isObjectIdOrHexString, type FilterQuery, type Model } from 'mongoose'
 import type { Occurrence } from './occurrence'
 import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from './occurrence.schema'
 
+/** A chave do alerta já está numa ocorrência: é reenvio, não alerta novo. */
+export class DuplicateAlertError extends Error {}
+
 /** Prioridade desc; empate → detecção mais recente; por fim `_id`, para a ordem ser estável. */
 const LIST_ORDER = { priority: -1, detectedAt: -1, _id: -1 } as const
 
@@ -72,42 +75,66 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 
   /**
-   * Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo dentro da janela do
-   * alerta.
+   * Agrupa, de forma atômica, na ocorrência mais antiga do site+tipo dentro da janela do alerta:
+   * aberta, ou já reconhecida se o alerta foi detectado antes do reconhecimento (chegou atrasado).
+   * Lança DuplicateAlertError se a chave do alerta já está em outra ocorrência.
    */
-  async groupIntoOpenOccurrence(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+  async groupIntoOccurrence(alert: CreateOccurrenceInput, key: string): Promise<Occurrence | null> {
     const { from, to } = dedupWindow(alert.detectedAt)
-    const doc = await this.model
-      .findOneAndUpdate(
-        {
-          siteId: alert.siteId,
-          type: alert.type,
-          status: 'open',
-          detectedAt: { $gte: from, $lte: to },
-        },
-        // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
-        [
+    const isOpen = { $eq: ['$status', 'open'] }
+    try {
+      const doc = await this.model
+        .findOneAndUpdate(
           {
-            $set: {
-              count: { $add: ['$count', 1] },
-              severity: { $min: [{ $add: ['$severity', 1] }, MAX_SEVERITY] },
-              lastDetectedAt: { $max: ['$lastDetectedAt', alert.detectedAt] },
-              droneIds: {
-                $sortArray: { input: { $setUnion: ['$droneIds', [alert.droneId]] }, sortBy: 1 },
+            siteId: alert.siteId,
+            type: alert.type,
+            detectedAt: { $gte: from, $lte: to },
+            alertKeys: { $ne: key },
+            $or: [{ status: 'open' }, { acknowledgedAt: { $gte: alert.detectedAt } }],
+          },
+          // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
+          [
+            {
+              $set: {
+                count: { $add: ['$count', 1] },
+                // Ocorrência já reconhecida só registra o alerta: não volta para a fila da triagem
+                severity: {
+                  $cond: [
+                    isOpen,
+                    { $min: [{ $add: ['$severity', 1] }, MAX_SEVERITY] },
+                    '$severity',
+                  ],
+                },
+                lastDetectedAt: { $max: ['$lastDetectedAt', alert.detectedAt] },
+                droneIds: {
+                  $sortArray: { input: { $setUnion: ['$droneIds', [alert.droneId]] }, sortBy: 1 },
+                },
+                alertKeys: { $concatArrays: ['$alertKeys', [key]] },
               },
             },
-          },
-          { $set: { priority: PRIORITY_EXPRESSION } },
-        ],
-        { new: true, sort: { detectedAt: 1 } },
-      )
-      .lean<LeanOccurrence>()
+            { $set: { priority: PRIORITY_EXPRESSION } },
+          ],
+          { new: true, sort: { detectedAt: 1 } },
+        )
+        .lean<LeanOccurrence>()
 
-    return doc && toOccurrence(doc)
+      return doc && toOccurrence(doc)
+    } catch (error) {
+      // O único índice único que este update pode violar é o das chaves de alerta
+      if (isDuplicateKeyError(error)) throw new DuplicateAlertError()
+      throw error
+    }
   }
 
-  /** Cria com `seq = version + 1`; null se outra requisição já criou nessa versão (E11000). */
-  async insertAtVersion(alert: CreateOccurrenceInput, version: number): Promise<Occurrence | null> {
+  /**
+   * Cria com `seq = version + 1`. Devolve null se outra requisição já criou nessa versão; lança
+   * DuplicateAlertError se a chave do alerta já está em outra ocorrência.
+   */
+  async insertAtVersion(
+    alert: CreateOccurrenceInput,
+    version: number,
+    key: string,
+  ): Promise<Occurrence | null> {
     try {
       const doc = await this.model.create({
         siteId: alert.siteId,
@@ -122,12 +149,21 @@ export class OccurrencesRepository implements OnModuleInit {
         detectedAt: alert.detectedAt,
         lastDetectedAt: alert.detectedAt,
         seq: version + 1,
+        alertKeys: [key],
+        acknowledgedAt: null,
       })
       return toOccurrence(doc.toObject())
     } catch (error) {
-      if (isDuplicateKeyError(error)) return null
-      throw error
+      if (!isDuplicateKeyError(error)) throw error
+      if ('alertKeys' in (error.keyPattern ?? {})) throw new DuplicateAlertError()
+      return null
     }
+  }
+
+  /** Ocorrência em que o alerta já foi contado (resposta do reenvio). */
+  async findByAlertKey(key: string): Promise<Occurrence> {
+    const doc = await this.model.findOne({ alertKeys: key }).orFail().lean<LeanOccurrence>()
+    return toOccurrence(doc)
   }
 
   async list(filter: OccurrenceFilter): Promise<Occurrence[]> {
@@ -149,6 +185,7 @@ export class OccurrencesRepository implements OnModuleInit {
     id: string,
     from: readonly OccurrenceStatus[],
     change: UpdateStatusInput,
+    now: Date,
   ): Promise<Occurrence | null> {
     if (!isObjectIdOrHexString(id)) return null
 
@@ -158,6 +195,7 @@ export class OccurrencesRepository implements OnModuleInit {
         {
           $set: {
             status: change.status,
+            ...(change.status === 'acknowledged' ? { acknowledgedAt: now } : {}),
             ...(change.status === 'resolved' ? { note: change.note } : {}),
           },
         },
@@ -169,10 +207,18 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 }
 
-function isDuplicateKeyError(error: unknown): boolean {
+function isDuplicateKeyError(
+  error: unknown,
+): error is { code: 11000; keyPattern?: Record<string, unknown> } {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 11000
 }
 
-function toOccurrence({ _id, seq, ...fields }: LeanOccurrence): Occurrence {
+function toOccurrence({
+  _id,
+  seq,
+  alertKeys,
+  acknowledgedAt,
+  ...fields
+}: LeanOccurrence): Occurrence {
   return { id: _id.toHexString(), ...fields }
 }

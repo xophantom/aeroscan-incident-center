@@ -1,8 +1,13 @@
-import { MAX_ALERT_AGE_MS, MAX_FUTURE_SKEW_MS, type CreateOccurrenceInput } from '@aeroscan/shared'
+import {
+  MAX_ALERT_AGE_MS,
+  MAX_FUTURE_SKEW_MS,
+  alertKey,
+  type CreateOccurrenceInput,
+} from '@aeroscan/shared'
 import { AppException } from '../common/errors/app.exception'
 import type { ClockService } from '../infra/clock/clock.service'
 import type { Occurrence } from './occurrence'
-import type { OccurrencesRepository } from './occurrences.repository'
+import { DuplicateAlertError, type OccurrencesRepository } from './occurrences.repository'
 import { MAX_DEDUP_ATTEMPTS, OccurrencesService } from './occurrences.service'
 
 const NOW = new Date('2026-09-25T12:00:00.000Z')
@@ -38,15 +43,21 @@ function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
 type RepositoryMock = jest.Mocked<
   Pick<
     OccurrencesRepository,
-    'creationVersion' | 'groupIntoOpenOccurrence' | 'insertAtVersion' | 'findById' | 'changeStatus'
+    | 'creationVersion'
+    | 'groupIntoOccurrence'
+    | 'insertAtVersion'
+    | 'findByAlertKey'
+    | 'findById'
+    | 'changeStatus'
   >
 >
 
 function setup() {
   const repository: RepositoryMock = {
     creationVersion: jest.fn().mockResolvedValue(0),
-    groupIntoOpenOccurrence: jest.fn().mockResolvedValue(null),
+    groupIntoOccurrence: jest.fn().mockResolvedValue(null),
     insertAtVersion: jest.fn().mockResolvedValue(null),
+    findByAlertKey: jest.fn().mockResolvedValue(occurrence()),
     findById: jest.fn().mockResolvedValue(null),
     changeStatus: jest.fn().mockResolvedValue(null),
   }
@@ -73,7 +84,7 @@ describe('OccurrencesService.register', () => {
   it('agrupa quando há ocorrência aberta na janela, sem tentar criar', async () => {
     const { service, repository } = setup()
     const grouped = occurrence({ count: 2, severity: 3 })
-    repository.groupIntoOpenOccurrence.mockResolvedValue(grouped)
+    repository.groupIntoOccurrence.mockResolvedValue(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
     expect(repository.insertAtVersion).not.toHaveBeenCalled()
@@ -87,21 +98,40 @@ describe('OccurrencesService.register', () => {
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: created, created: true })
 
-    expect(repository.insertAtVersion).toHaveBeenCalledWith(alert, 4)
+    expect(repository.insertAtVersion).toHaveBeenCalledWith(alert, 4, alertKey(alert))
     expect(firstCallOrder(repository.creationVersion)).toBeLessThan(
-      firstCallOrder(repository.groupIntoOpenOccurrence),
+      firstCallOrder(repository.groupIntoOccurrence),
     )
   })
 
   it('perdeu a corrida no insert (E11000): relê a versão e agrupa no que a outra requisição criou', async () => {
     const { service, repository } = setup()
     const grouped = occurrence({ count: 2 })
-    repository.groupIntoOpenOccurrence.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
+    repository.groupIntoOccurrence.mockResolvedValueOnce(null).mockResolvedValueOnce(grouped)
 
     await expect(service.register(alert)).resolves.toEqual({ occurrence: grouped, created: false })
     expect(repository.creationVersion).toHaveBeenCalledTimes(2)
     expect(repository.insertAtVersion).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    ['ao agrupar', 'groupIntoOccurrence'],
+    ['ao criar', 'insertAtVersion'],
+  ] as const)(
+    'reenvio (a chave do alerta já foi contada, recusada %s) devolve a ocorrência dele',
+    async (_case, step) => {
+      const { service, repository } = setup()
+      const counted = occurrence({ count: 2 })
+      repository[step].mockRejectedValue(new DuplicateAlertError())
+      repository.findByAlertKey.mockResolvedValue(counted)
+
+      await expect(service.register(alert)).resolves.toEqual({
+        occurrence: counted,
+        created: false,
+      })
+      expect(repository.findByAlertKey).toHaveBeenCalledWith(alertKey(alert))
+    },
+  )
 
   it(`desiste após ${MAX_DEDUP_ATTEMPTS} tentativas com WRITE_CONFLICT (503)`, async () => {
     const { service, repository } = setup()
@@ -138,7 +168,13 @@ describe('OccurrencesService.changeStatus', () => {
     repository.changeStatus.mockResolvedValue(updated)
 
     await expect(service.changeStatus(id, { status: 'acknowledged' })).resolves.toBe(updated)
-    expect(repository.changeStatus).toHaveBeenCalledWith(id, ['open'], { status: 'acknowledged' })
+    // A hora do reconhecimento vem do relógio: alerta detectado antes dela ainda entra na ocorrência
+    expect(repository.changeStatus).toHaveBeenCalledWith(
+      id,
+      ['open'],
+      { status: 'acknowledged' },
+      NOW,
+    )
     expect(repository.findById).not.toHaveBeenCalled()
   })
 
@@ -149,7 +185,7 @@ describe('OccurrencesService.changeStatus', () => {
 
     await service.changeStatus(id, change)
 
-    expect(repository.changeStatus).toHaveBeenCalledWith(id, ['acknowledged'], change)
+    expect(repository.changeStatus).toHaveBeenCalledWith(id, ['acknowledged'], change, NOW)
   })
 
   it('corrida: se o status virou uma origem válida no meio, tenta de novo e aplica', async () => {
