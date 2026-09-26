@@ -169,6 +169,22 @@ describe('Occurrences (e2e)', () => {
       expect(errorOf(res).code).toBe('BAD_REQUEST')
     })
 
+    it('413 no envelope para corpo acima do limite do body-parser', async () => {
+      const res = await post(alert({ siteId: 'x'.repeat(200_000) })).expect(413)
+
+      expect(errorOf(res).code).toBe('PAYLOAD_TOO_LARGE')
+    })
+
+    it('415 no envelope para charset não suportado', async () => {
+      const res = await t.http
+        .post('/occurrences')
+        .set('Content-Type', 'application/json; charset=latin1')
+        .send(JSON.stringify(alert()))
+        .expect(415)
+
+      expect(errorOf(res).code).toBe('UNSUPPORTED_MEDIA_TYPE')
+    })
+
     it('concorrência: 20 POSTs idênticos em paralelo → 1 ocorrência com count 20', async () => {
       const total = 20
       const initialSeverity = 1

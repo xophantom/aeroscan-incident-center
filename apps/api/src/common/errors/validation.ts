@@ -7,7 +7,7 @@ interface ZodErrorLike {
 }
 
 // O shared (ESM) e a API (CJS) carregam builds diferentes do zod: instanceof ZodError não é confiável
-export function isZodErrorLike(error: unknown): error is ZodErrorLike {
+function isZodErrorLike(error: unknown): error is ZodErrorLike {
   return (
     typeof error === 'object' &&
     error !== null &&
