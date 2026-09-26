@@ -14,8 +14,9 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
   app.disable('x-powered-by')
   // Aceita qualquer JSON: corpo que não é objeto vira 422 da validação, não 400 do parser
   app.useBodyParser('json', { strict: false })
-  // Servido pela API ou pelo proxy do Vite, o front é mesma origem; só o file:// (Origin: null)
-  // precisa de CORS. Liberar "*" deixaria qualquer site no navegador do gestor mudar status.
+  // O padrão libera Origin: null para o front aberto via file://. Não é barreira de segurança:
+  // iframes sandbox também mandam null, e a API não tem autenticação. Com o front num domínio
+  // próprio, CORS_ORIGINS passa a ser só esse domínio.
   app.enableCors({ origin: app.get(AppConfig).corsOrigins })
   app.enableShutdownHooks()
 
@@ -23,7 +24,10 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
     app,
     new DocumentBuilder()
       .setTitle('AeroScan · Triagem de Ocorrências')
-      .setDescription('Erros sempre no envelope { error: { code, message, details? } }')
+      .setDescription(
+        'Erros das rotas de ocorrências no envelope { error: { code, message, details? } }; ' +
+          'o /health responde { status, mongo }.',
+      )
       .setVersion('1.0')
       .build(),
   )

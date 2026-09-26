@@ -14,9 +14,8 @@ export class ListOccurrencesQueryDto extends createZodDto(listOccurrencesQuerySc
 export class OccurrenceResponseDto extends createZodDto(occurrenceResponseSchema) {}
 export class ErrorResponseDto extends createZodDto(errorResponseSchema) {}
 
-// Exceção: union discriminada não pode ser base de `class extends` (TS2509). O cast só troca o tipo
-// da instância; a classe serve ao Swagger e o controller valida o PATCH com pipe explícito, que
-// mantém o tipo da union no parâmetro.
+// Union discriminada não pode ser base de `class extends` (TS2509): esta classe serve só ao Swagger,
+// e o controller valida o PATCH com pipe explícito para manter o tipo da union no parâmetro.
 export class UpdateStatusBodyDto extends (createZodDto(
   updateStatusBodySchema,
 ) as new () => object) {}

@@ -61,7 +61,7 @@ const VALID_TRANSITIONS = Object.entries(STATUS_TRANSITIONS)
 // Erros do body-parser, comuns às rotas com corpo
 const ApiBodyErrors = () =>
   applyDecorators(
-    ApiBadRequestResponse({ type: ErrorResponseDto, description: 'JSON malformado' }),
+    ApiBadRequestResponse({ type: ErrorResponseDto, description: 'JSON ou URL malformado' }),
     ApiPayloadTooLargeResponse({ type: ErrorResponseDto, description: 'Corpo acima do limite' }),
     ApiUnsupportedMediaTypeResponse({
       type: ErrorResponseDto,
