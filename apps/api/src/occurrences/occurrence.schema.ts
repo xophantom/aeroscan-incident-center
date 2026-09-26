@@ -1,34 +1,15 @@
-import {
-  MAX_SEVERITY,
-  MIN_SEVERITY,
-  OCCURRENCE_STATUSES,
-  OCCURRENCE_TYPES,
-  type OccurrenceStatus,
-  type OccurrenceType,
-} from '@aeroscan/shared'
+import { MAX_SEVERITY, MIN_SEVERITY, OCCURRENCE_STATUSES, OCCURRENCE_TYPES } from '@aeroscan/shared'
 import { Schema, type Types } from 'mongoose'
+import type { Occurrence } from './occurrence'
 
 export const OCCURRENCE_MODEL = 'Occurrence'
 
-export interface OccurrenceDocument {
-  siteId: string
-  droneId: string
-  type: OccurrenceType
-  severity: number
-  /** Denormalizado (severity × peso) para filtrar e ordenar no banco. */
-  priority: number
-  status: OccurrenceStatus
-  count: number
-  note: string | null
-  detectedAt: Date
-  lastDetectedAt: Date
+export interface OccurrenceDocument extends Omit<Occurrence, 'id'> {
   /**
    * Vaga única de criação por site+tipo (índice único parcial). Sai de true quando a ocorrência
    * deixa `open` ou quando um alerta posterior a encontra vencida.
    */
   activeWindow: boolean
-  createdAt: Date
-  updatedAt: Date
 }
 
 export type LeanOccurrence = OccurrenceDocument & { _id: Types.ObjectId }
@@ -39,6 +20,7 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
     droneId: { type: String, required: true },
     type: { type: String, enum: OCCURRENCE_TYPES, required: true },
     severity: { type: Number, min: MIN_SEVERITY, max: MAX_SEVERITY, required: true },
+    // severity × peso do tipo, denormalizado para ordenar no banco
     priority: { type: Number, required: true },
     status: { type: String, enum: OCCURRENCE_STATUSES, required: true },
     count: { type: Number, min: 1, required: true },

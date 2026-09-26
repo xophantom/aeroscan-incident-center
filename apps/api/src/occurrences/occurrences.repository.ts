@@ -173,20 +173,7 @@ function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 11000
 }
 
-function toOccurrence(doc: LeanOccurrence): Occurrence {
-  return {
-    id: doc._id.toHexString(),
-    siteId: doc.siteId,
-    droneId: doc.droneId,
-    type: doc.type,
-    severity: doc.severity,
-    priority: doc.priority,
-    status: doc.status,
-    count: doc.count,
-    note: doc.note,
-    detectedAt: doc.detectedAt,
-    lastDetectedAt: doc.lastDetectedAt,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
-  }
+// `activeWindow` é detalhe do dedup e não sai do repository
+function toOccurrence({ _id, activeWindow, ...fields }: LeanOccurrence): Occurrence {
+  return { id: _id.toHexString(), ...fields }
 }

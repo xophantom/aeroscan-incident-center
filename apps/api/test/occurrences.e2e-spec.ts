@@ -70,6 +70,7 @@ describe('Occurrences (e2e)', () => {
         lastDetectedAt: T0.toISOString(),
       })
       expect(created.id).toMatch(/^[0-9a-f]{24}$/)
+      expect(created).not.toHaveProperty('activeWindow')
     })
 
     it('agrupa alerta repetido na janela: 200, count +1, severity +1, prioridade recalculada', async () => {
