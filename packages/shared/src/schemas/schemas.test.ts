@@ -108,6 +108,13 @@ describe('listOccurrencesQuerySchema', () => {
     })
   })
 
+  it.each([
+    [['open', ''], ['open']],
+    [['', ' '], undefined],
+  ])('ignora valores vazios no status repetido (%j)', (status, expected) => {
+    expect(listOccurrencesQuerySchema.parse({ status }).status).toEqual(expected)
+  })
+
   it('rejeita status desconhecido, sozinho ou na lista', () => {
     const single = listOccurrencesQuerySchema.safeParse({ status: 'closed' })
     const list = listOccurrencesQuerySchema.safeParse({ status: ['open', 'closed'] })

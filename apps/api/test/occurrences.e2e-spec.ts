@@ -364,11 +364,12 @@ describe('Occurrences (e2e)', () => {
       expect(await list('?status=open&siteId=site-a')).toHaveLength(1)
     })
 
-    it('filtros vazios valem como ausentes (?status=&siteId=)', async () => {
+    it('filtros vazios valem como ausentes (?status=&siteId=, ?status=&status=)', async () => {
       await create({ siteId: 'site-a' })
       await create({ siteId: 'site-b' })
 
       expect(await list('?status=&siteId=')).toHaveLength(2)
+      expect(await list('?status=&status=')).toHaveLength(2)
     })
 
     it('422 para status desconhecido', async () => {
