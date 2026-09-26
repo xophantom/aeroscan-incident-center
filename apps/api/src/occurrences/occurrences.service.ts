@@ -25,11 +25,12 @@ import {
 } from './occurrence.errors'
 import { OccurrencesRepository } from './occurrences.repository'
 
-// Cada E11000 é uma ocorrência que outra requisição criou no mesmo site+tipo, e as abertas criadas
-// distam mais de 10 min entre si: no intervalo aceito de detectedAt cabem no máximo estas, então nem
-// um drone despejando 24 h de fila de uma vez esgota as tentativas
-export const MAX_DEDUP_ATTEMPTS =
+// Cada E11000 é uma ocorrência que outra requisição abriu no mesmo site+tipo, a mais de 10 min das
+// outras abertas. Sem mudanças de status no meio, cabem no máximo estas no intervalo aceito de
+// detectedAt, e a tentativa depois da última agrupa ou cria.
+const MAX_CONCURRENT_CREATIONS =
   Math.floor((MAX_ALERT_AGE_MS + MAX_FUTURE_SKEW_MS) / DEDUP_WINDOW_MS) + 1
+export const MAX_DEDUP_ATTEMPTS = MAX_CONCURRENT_CREATIONS + 1
 
 interface RegisterResult {
   occurrence: Occurrence
