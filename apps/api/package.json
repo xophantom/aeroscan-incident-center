@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch --preserveWatchOutput --exec \"node --watch\"",
+    "dev": "nest start --watch --preserveWatchOutput --exec \"node --watch --env-file-if-exists=.env\"",
     "start": "node dist/main.js",
     "test": "pnpm test:unit && pnpm test:e2e",
     "test:unit": "jest",
