@@ -1,35 +1,39 @@
 import { isOccurrenceStatus, type OccurrenceStatus } from '@aeroscan/shared'
 import { useCallback, useEffect, useState } from 'react'
 
-const PARAM = 'status'
+export type StatusFilterValue = OccurrenceStatus | 'all'
 
-function readFromUrl(): OccurrenceStatus | undefined {
+const PARAM = 'status'
+// A triagem abre no que ainda pede ação; "Todas" fica a um clique
+const DEFAULT_FILTER: StatusFilterValue = 'open'
+
+function readFromUrl(): StatusFilterValue {
   const value = new URLSearchParams(window.location.search).get(PARAM)
-  return isOccurrenceStatus(value) ? value : undefined
+  return value === 'all' || isOccurrenceStatus(value) ? value : DEFAULT_FILTER
 }
 
-/** Filtro de status espelhado na querystring (?status=open): sobrevive a reload e ao voltar/avançar. */
+/** Filtro de status espelhado na querystring (?status=all): sobrevive a reload e ao voltar/avançar. */
 export function useStatusFilter() {
-  const [status, setStatusState] = useState(readFromUrl)
+  const [filter, setFilterState] = useState(readFromUrl)
 
   useEffect(() => {
-    const onPopState = () => setStatusState(readFromUrl())
+    const onPopState = () => setFilterState(readFromUrl())
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  const setStatus = useCallback((next: OccurrenceStatus | undefined) => {
+  const setFilter = useCallback((next: StatusFilterValue) => {
     const url = new URL(window.location.href)
-    if (next) url.searchParams.set(PARAM, next)
-    else url.searchParams.delete(PARAM)
+    if (next === DEFAULT_FILTER) url.searchParams.delete(PARAM)
+    else url.searchParams.set(PARAM, next)
 
     try {
       window.history.pushState(null, '', url)
     } catch {
       // Alguns navegadores recusam pushState em file://; o filtro segue funcionando em memória
     }
-    setStatusState(next)
+    setFilterState(next)
   }, [])
 
-  return [status, setStatus] as const
+  return [filter, setFilter] as const
 }

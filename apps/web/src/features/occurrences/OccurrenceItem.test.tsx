@@ -2,42 +2,29 @@ import type { OccurrenceResponse } from '@aeroscan/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { occurrence } from '../../test/fixtures'
 import { OccurrenceItem } from './OccurrenceItem'
-
-function occurrence(overrides: Partial<OccurrenceResponse> = {}): OccurrenceResponse {
-  const iso = '2026-09-25T14:00:00.000Z'
-  return {
-    id: '66f4a1c2e4b0a1b2c3d4e5f6',
-    siteId: 'site-a',
-    droneId: 'drone-1',
-    type: 'intrusion',
-    severity: 3,
-    priority: 9,
-    status: 'open',
-    count: 1,
-    note: null,
-    detectedAt: iso,
-    lastDetectedAt: iso,
-    createdAt: iso,
-    updatedAt: iso,
-    ...overrides,
-  }
-}
 
 function renderItem(overrides: Partial<OccurrenceResponse> = {}) {
   const onAcknowledge = vi.fn()
   const onResolve = vi.fn().mockResolvedValue(true)
-  render(
+  const item = (changes: Partial<OccurrenceResponse>) => (
     <ul>
       <OccurrenceItem
-        occurrence={occurrence(overrides)}
+        occurrence={occurrence({ ...overrides, ...changes })}
         busy={false}
         onAcknowledge={onAcknowledge}
         onResolve={onResolve}
       />
-    </ul>,
+    </ul>
   )
-  return { onAcknowledge, onResolve, user: userEvent.setup() }
+  const { rerender } = render(item({}))
+  return {
+    onAcknowledge,
+    onResolve,
+    user: userEvent.setup(),
+    rerenderWith: (changes: Partial<OccurrenceResponse>) => rerender(item(changes)),
+  }
 }
 
 const button = (name: string) => screen.queryByRole('button', { name })
@@ -80,6 +67,15 @@ describe('OccurrenceItem: botões por status', () => {
     await user.click(button('Confirmar resolução')!)
 
     expect(onResolve).toHaveBeenCalledWith('66f4a1c2e4b0a1b2c3d4e5f6', 'equipe verificou')
+    expect(screen.queryByLabelText('Nota de resolução')).not.toBeInTheDocument()
+  })
+
+  it('o campo de nota some se a ocorrência deixa de ser resolvível (outro gestor resolveu)', async () => {
+    const { user, rerenderWith } = renderItem({ status: 'acknowledged' })
+    await user.click(button('Resolver')!)
+
+    rerenderWith({ status: 'resolved', note: 'resolvida por outro gestor' })
+
     expect(screen.queryByLabelText('Nota de resolução')).not.toBeInTheDocument()
   })
 })

@@ -11,13 +11,14 @@ import { useOccurrences } from './use-occurrences'
 import { useStatusFilter } from './use-status-filter'
 
 export function OccurrencesPage() {
-  const [status, setStatus] = useStatusFilter()
+  const [filter, setFilter] = useStatusFilter()
+  const status = filter === 'all' ? undefined : filter
   const { state, refetch } = useOccurrences(status)
   const toast = useToast()
-  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
 
   async function changeStatus(id: string, body: UpdateStatusBody, success: string) {
-    setPendingId(id)
+    setPendingIds((ids) => new Set(ids).add(id))
     try {
       await updateOccurrenceStatus(id, body)
       toast.show(success, 'success')
@@ -26,13 +27,18 @@ export function OccurrencesPage() {
       toast.show(errorMessage(error))
       return false
     } finally {
-      setPendingId(null)
-      // Com sucesso ou erro (ex.: 409 porque outro gestor já agiu), a lista volta a refletir o servidor
+      // Com sucesso ou erro (ex.: 409 porque outro gestor já agiu), a lista volta a refletir o
+      // servidor antes de liberar os botões do item
       await refetch()
+      setPendingIds((ids) => {
+        const remaining = new Set(ids)
+        remaining.delete(id)
+        return remaining
+      })
     }
   }
 
-  const filterLabel = STATUS_FILTERS.find((f) => f.value === status)?.label.toLowerCase()
+  const filterLabel = STATUS_FILTERS.find((f) => f.value === filter)?.label.toLowerCase()
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -50,12 +56,12 @@ export function OccurrencesPage() {
       </header>
 
       <div className="mb-4">
-        <StatusFilter value={status} onChange={setStatus} />
+        <StatusFilter value={filter} onChange={setFilter} />
       </div>
 
       <OccurrenceList
         state={state}
-        pendingId={pendingId}
+        pendingIds={pendingIds}
         emptyMessage={
           status ? `Nenhuma ocorrência em "${filterLabel}".` : 'Nenhuma ocorrência registrada.'
         }

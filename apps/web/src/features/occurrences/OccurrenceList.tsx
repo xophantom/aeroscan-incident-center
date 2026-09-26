@@ -5,7 +5,7 @@ import type { OccurrencesState } from './use-occurrences'
 
 interface OccurrenceListProps {
   state: OccurrencesState
-  pendingId: string | null
+  pendingIds: ReadonlySet<string>
   emptyMessage: string
   onRetry: () => void
   onAcknowledge: (id: string) => void
@@ -14,7 +14,7 @@ interface OccurrenceListProps {
 
 export function OccurrenceList({
   state,
-  pendingId,
+  pendingIds,
   emptyMessage,
   onRetry,
   onAcknowledge,
@@ -54,7 +54,7 @@ export function OccurrenceList({
         <OccurrenceItem
           key={occurrence.id}
           occurrence={occurrence}
-          busy={pendingId === occurrence.id}
+          busy={pendingIds.has(occurrence.id)}
           onAcknowledge={onAcknowledge}
           onResolve={onResolve}
         />

@@ -1,9 +1,9 @@
-import type { OccurrenceStatus } from '@aeroscan/shared'
 import { STATUS_FILTERS } from './labels'
+import type { StatusFilterValue } from './use-status-filter'
 
 interface StatusFilterProps {
-  value: OccurrenceStatus | undefined
-  onChange: (value: OccurrenceStatus | undefined) => void
+  value: StatusFilterValue
+  onChange: (value: StatusFilterValue) => void
 }
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
@@ -17,7 +17,7 @@ export function StatusFilter({ value, onChange }: StatusFilterProps) {
         const active = filter.value === value
         return (
           <button
-            key={filter.label}
+            key={filter.value}
             type="button"
             aria-pressed={active}
             onClick={() => onChange(filter.value)}

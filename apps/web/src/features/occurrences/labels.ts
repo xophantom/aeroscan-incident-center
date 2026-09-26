@@ -1,4 +1,5 @@
 import type { OccurrenceStatus, OccurrenceType } from '@aeroscan/shared'
+import type { StatusFilterValue } from './use-status-filter'
 
 export const TYPE_LABEL: Record<OccurrenceType, string> = {
   intrusion: 'Intrusão',
@@ -13,13 +14,12 @@ export const STATUS_LABEL: Record<OccurrenceStatus, string> = {
   resolved: 'Resolvida',
 }
 
-export const STATUS_FILTERS: ReadonlyArray<{ value: OccurrenceStatus | undefined; label: string }> =
-  [
-    { value: undefined, label: 'Todos' },
-    { value: 'open', label: 'Abertas' },
-    { value: 'acknowledged', label: 'Reconhecidas' },
-    { value: 'resolved', label: 'Resolvidas' },
-  ]
+export const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilterValue; label: string }> = [
+  { value: 'open', label: 'Abertas' },
+  { value: 'acknowledged', label: 'Reconhecidas' },
+  { value: 'resolved', label: 'Resolvidas' },
+  { value: 'all', label: 'Todas' },
+]
 
 const dateTime = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })
 
