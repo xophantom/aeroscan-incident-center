@@ -9,7 +9,7 @@ import { AppConfig } from '../../config/app-config'
       useFactory: (config: AppConfig) => ({
         pinoHttp: {
           level: config.logLevel,
-          // Resolvido daqui: com pnpm, o pino sozinho não enxerga o pino-pretty (devDependency da API)
+          // Resolvido daqui: com pnpm, o pino não enxerga o pino-pretty, que é dependência da API
           transport: config.logPretty
             ? { target: require.resolve('pino-pretty'), options: { singleLine: true } }
             : undefined,
