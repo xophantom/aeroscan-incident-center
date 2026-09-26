@@ -514,7 +514,9 @@ describe('Occurrences (e2e)', () => {
 
       await t.app.get(OccurrencesRepository).onModuleInit()
 
-      expect(await list()).toMatchObject([{ id: created.id, priority: 6 }])
+      expect(await list()).toMatchObject([
+        { id: created.id, priority: 6, updatedAt: created.updatedAt },
+      ])
     })
 
     it('a fórmula no Mongo bate com computePriority em todo tipo e severidade', async () => {

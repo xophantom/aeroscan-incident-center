@@ -51,11 +51,16 @@ export class OccurrencesRepository implements OnModuleInit {
     await this.reconcilePriorities()
   }
 
-  /** `priority` é denormalizado: se os pesos mudarem, recalcula só as ocorrências divergentes. */
+  /**
+   * `priority` é denormalizado: se os pesos mudarem, recalcula só as ocorrências divergentes. É
+   * manutenção, não um evento da ocorrência, então não mexe no `updatedAt`.
+   */
   async reconcilePriorities(): Promise<void> {
-    await this.model.updateMany({ $expr: { $ne: ['$priority', PRIORITY_EXPRESSION] } }, [
-      { $set: { priority: PRIORITY_EXPRESSION } },
-    ])
+    await this.model.updateMany(
+      { $expr: { $ne: ['$priority', PRIORITY_EXPRESSION] } },
+      [{ $set: { priority: PRIORITY_EXPRESSION } }],
+      { timestamps: false },
+    )
   }
 
   /** Versão das criações do site+tipo: o `seq` da última ocorrência criada, ou 0 se nenhuma. */
