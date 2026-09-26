@@ -5,7 +5,7 @@ import { REQUEST_BODY_MESSAGE } from './fields.js'
 export const NOTE_MAX_LENGTH = 1000
 const noteRequired = 'A nota é obrigatória para resolver a ocorrência'
 
-export const resolutionNoteSchema = z
+const resolutionNoteSchema = z
   .string({ required_error: noteRequired, invalid_type_error: 'note deve ser um texto' })
   .trim()
   .min(1, noteRequired)
@@ -41,5 +41,3 @@ export type UpdateStatusInput = z.output<typeof updateStatusBodySchema>
 
 /** Formulário "Resolver" do front: mesma regra de nota do PATCH. */
 export const resolveFormSchema = z.object({ note: resolutionNoteSchema })
-
-export type ResolveFormValues = z.input<typeof resolveFormSchema>

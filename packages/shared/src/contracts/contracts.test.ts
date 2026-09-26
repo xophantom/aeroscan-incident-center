@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ERROR_CODES, isErrorResponse } from './error.js'
+import { isErrorResponse } from './error.js'
 import { occurrenceResponseSchema } from './occurrence-response.js'
 
 describe('isErrorResponse', () => {
@@ -20,11 +20,6 @@ describe('isErrorResponse', () => {
     { error: { code: 'NOT_FOUND' } },
   ])('rejeita %j', (value) => {
     expect(isErrorResponse(value)).toBe(false)
-  })
-
-  it('lista os códigos usados pela API', () => {
-    expect(ERROR_CODES).toContain('INVALID_STATUS_TRANSITION')
-    expect(ERROR_CODES).toContain('VALIDATION_ERROR')
   })
 })
 

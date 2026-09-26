@@ -1,6 +1,5 @@
 export * from './domain/occurrence.js'
 export * from './domain/priority.js'
-export * from './domain/severity.js'
 export * from './domain/status.js'
 export * from './domain/dedup.js'
 

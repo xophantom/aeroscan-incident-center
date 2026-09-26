@@ -13,7 +13,7 @@ const envSchema = z.object({
     .default(join(__dirname, '..', '..', '..', '..', 'frontend-dist')),
 })
 
-export type LogLevel = z.infer<typeof envSchema>['LOG_LEVEL']
+type LogLevel = z.infer<typeof envSchema>['LOG_LEVEL']
 
 export class AppConfig {
   readonly port: number

@@ -8,5 +8,4 @@ export const listOccurrencesQuerySchema = z.object({
   siteId: optionalQueryParam(textField('siteId')),
 })
 
-export type ListOccurrencesQuery = z.input<typeof listOccurrencesQuerySchema>
 export type OccurrenceFilter = z.output<typeof listOccurrencesQuerySchema>
