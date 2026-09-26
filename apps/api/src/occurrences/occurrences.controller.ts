@@ -36,7 +36,7 @@ export class OccurrencesController {
   @ApiOperation({
     summary: 'Registra um alerta',
     description:
-      'Se já existe ocorrência aberta do mesmo site_id + type nos últimos 10 min, agrupa ' +
+      'Se já existe ocorrência aberta do mesmo siteId + type nos últimos 10 min, agrupa ' +
       '(count +1, severity +1 até 5) e responde 200; senão cria e responde 201.',
   })
   @ApiCreatedResponse({ type: OccurrenceResponseDto, description: 'Ocorrência criada' })

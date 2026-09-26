@@ -14,14 +14,14 @@ function messages(error: ZodError | undefined): Record<string, string> {
 
 describe('createOccurrenceBodySchema', () => {
   const valid = {
-    site_id: ' site-a ',
-    drone_id: 'drone-1',
+    siteId: ' site-a ',
+    droneId: 'drone-1',
     type: 'intrusion',
     severity: 3,
-    detected_at: '2026-09-25T14:00:00-03:00',
+    detectedAt: '2026-09-25T14:00:00-03:00',
   }
 
-  it('converte snake_case em camelCase, faz trim e transforma a data', () => {
+  it('faz trim dos textos e transforma detectedAt em Date', () => {
     expect(createOccurrenceBodySchema.parse(valid)).toEqual({
       siteId: 'site-a',
       droneId: 'drone-1',
@@ -35,18 +35,18 @@ describe('createOccurrenceBodySchema', () => {
     const result = createOccurrenceBodySchema.safeParse({})
 
     expect(messages(result.error)).toEqual({
-      site_id: 'site_id é obrigatório',
-      drone_id: 'drone_id é obrigatório',
+      siteId: 'siteId é obrigatório',
+      droneId: 'droneId é obrigatório',
       type: 'type deve ser um de: intrusion, perimeter_breach, low_battery, signal_loss',
       severity: 'severity é obrigatório',
-      detected_at: 'detected_at é obrigatório',
+      detectedAt: 'detectedAt é obrigatório',
     })
   })
 
   it.each([
-    [{ site_id: '   ' }, 'site_id', 'site_id é obrigatório'],
-    [{ site_id: 'x'.repeat(101) }, 'site_id', 'site_id deve ter no máximo 100 caracteres'],
-    [{ drone_id: 42 }, 'drone_id', 'drone_id deve ser um texto'],
+    [{ siteId: '   ' }, 'siteId', 'siteId é obrigatório'],
+    [{ siteId: 'x'.repeat(101) }, 'siteId', 'siteId deve ter no máximo 100 caracteres'],
+    [{ droneId: 42 }, 'droneId', 'droneId deve ser um texto'],
     [
       { type: 'fire' },
       'type',
@@ -56,8 +56,8 @@ describe('createOccurrenceBodySchema', () => {
     [{ severity: 6 }, 'severity', 'severity deve estar entre 1 e 5'],
     [{ severity: 2.5 }, 'severity', 'severity deve ser um número inteiro'],
     [{ severity: '3' }, 'severity', 'severity deve ser um número'],
-    [{ detected_at: 'ontem' }, 'detected_at', expect.stringContaining('ISO 8601')],
-    [{ detected_at: 1700000000 }, 'detected_at', 'detected_at deve ser um texto'],
+    [{ detectedAt: 'ontem' }, 'detectedAt', expect.stringContaining('ISO 8601')],
+    [{ detectedAt: 1700000000 }, 'detectedAt', 'detectedAt deve ser um texto'],
   ])('rejeita %j', (override, path, message) => {
     const result = createOccurrenceBodySchema.safeParse({ ...valid, ...override })
 
@@ -71,16 +71,11 @@ describe('listOccurrencesQuerySchema', () => {
     expect(listOccurrencesQuerySchema.parse({})).toEqual({ status: undefined, siteId: undefined })
   })
 
-  it('aceita status e site_id', () => {
-    expect(listOccurrencesQuerySchema.parse({ status: 'open', site_id: 'site-a' })).toEqual({
+  it('aceita status e siteId', () => {
+    expect(listOccurrencesQuerySchema.parse({ status: 'open', siteId: ' site-a ' })).toEqual({
       status: 'open',
       siteId: 'site-a',
     })
-  })
-
-  it('aceita siteId (grafia do enunciado), com site_id tendo precedência', () => {
-    expect(listOccurrencesQuerySchema.parse({ siteId: 'site-b' }).siteId).toBe('site-b')
-    expect(listOccurrencesQuerySchema.parse({ site_id: 'a', siteId: 'b' }).siteId).toBe('a')
   })
 
   it('trata valores vazios como filtro ausente (?status=&siteId=)', () => {
@@ -98,11 +93,11 @@ describe('listOccurrencesQuerySchema', () => {
     })
   })
 
-  it('rejeita site_id longo demais', () => {
-    const result = listOccurrencesQuerySchema.safeParse({ site_id: 'x'.repeat(101) })
+  it('rejeita siteId longo demais', () => {
+    const result = listOccurrencesQuerySchema.safeParse({ siteId: 'x'.repeat(101) })
 
     expect(messages(result.error)).toEqual({
-      site_id: 'site_id deve ter no máximo 100 caracteres',
+      siteId: 'siteId deve ter no máximo 100 caracteres',
     })
   })
 })

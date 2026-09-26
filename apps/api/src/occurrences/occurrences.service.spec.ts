@@ -113,7 +113,7 @@ describe('OccurrencesService.register', () => {
     expect(repository.insertActive).toHaveBeenCalledTimes(MAX_DEDUP_ATTEMPTS)
   })
 
-  it('rejeita detected_at no futuro (422) sem tocar no banco', async () => {
+  it('rejeita detectedAt no futuro (422) sem tocar no banco', async () => {
     const { service, repository } = setup()
     const future = new Date(NOW.getTime() + 61_000)
 

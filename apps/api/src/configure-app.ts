@@ -14,7 +14,7 @@ export function configureApp(app: INestApplication): INestApplication {
     app,
     new DocumentBuilder()
       .setTitle('AeroScan · Triagem de Ocorrências')
-      .setDescription('Contrato HTTP em snake_case. Erros: { error: { code, message, details? } }')
+      .setDescription('Erros sempre no envelope { error: { code, message, details? } }')
       .setVersion('1.0')
       .build(),
   )

@@ -26,11 +26,11 @@ describe('Occurrences (e2e)', () => {
 
   function alert(overrides: Partial<CreateOccurrenceBody> = {}): CreateOccurrenceBody {
     return {
-      site_id: 'site-a',
-      drone_id: 'drone-1',
+      siteId: 'site-a',
+      droneId: 'drone-1',
       type: 'intrusion',
       severity: 2,
-      detected_at: t.clock.now().toISOString(),
+      detectedAt: t.clock.now().toISOString(),
       ...overrides,
     }
   }
@@ -55,16 +55,16 @@ describe('Occurrences (e2e)', () => {
       const created = await create({ severity: 2, type: 'intrusion' })
 
       expect(created).toMatchObject({
-        site_id: 'site-a',
-        drone_id: 'drone-1',
+        siteId: 'site-a',
+        droneId: 'drone-1',
         type: 'intrusion',
         severity: 2,
         priority: 6,
         status: 'open',
         count: 1,
         note: null,
-        detected_at: T0.toISOString(),
-        last_detected_at: T0.toISOString(),
+        detectedAt: T0.toISOString(),
+        lastDetectedAt: T0.toISOString(),
       })
       expect(created.id).toMatch(/^[0-9a-f]{24}$/)
     })
@@ -73,16 +73,16 @@ describe('Occurrences (e2e)', () => {
       const first = await create({ severity: 2 })
       t.clock.advance(5 * MINUTE)
 
-      const res = await post(alert({ drone_id: 'drone-2', severity: 1 })).expect(200)
+      const res = await post(alert({ droneId: 'drone-2', severity: 1 })).expect(200)
 
       expect(res.body).toMatchObject({
         id: first.id,
         count: 2,
         severity: 3,
         priority: 9,
-        drone_id: 'drone-1',
-        detected_at: T0.toISOString(),
-        last_detected_at: t.clock.now().toISOString(),
+        droneId: 'drone-1',
+        detectedAt: T0.toISOString(),
+        lastDetectedAt: t.clock.now().toISOString(),
       })
       expect(await list()).toHaveLength(1)
     })
@@ -119,7 +119,7 @@ describe('Occurrences (e2e)', () => {
 
     it('não agrupa site ou tipo diferentes', async () => {
       await create()
-      await create({ site_id: 'site-b' })
+      await create({ siteId: 'site-b' })
       await create({ type: 'signal_loss' })
 
       expect(await list()).toHaveLength(3)
@@ -133,28 +133,28 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toMatchObject({ count: 3, severity: MAX_SEVERITY, priority: 15 })
     })
 
-    it('422 para detected_at além de 1 min no futuro; aceita dentro da tolerância', async () => {
+    it('422 para detectedAt além de 1 min no futuro; aceita dentro da tolerância', async () => {
       const future = (ms: number) => new Date(T0.getTime() + ms).toISOString()
 
-      const res = await post(alert({ detected_at: future(MINUTE + 1_000) })).expect(422)
+      const res = await post(alert({ detectedAt: future(MINUTE + 1_000) })).expect(422)
       expect(errorOf(res)).toMatchObject({
         code: 'VALIDATION_ERROR',
-        message: 'detected_at não pode estar no futuro',
+        message: 'detectedAt não pode estar no futuro',
       })
 
-      await post(alert({ detected_at: future(MINUTE) })).expect(201)
+      await post(alert({ detectedAt: future(MINUTE) })).expect(201)
     })
 
     it('422 com envelope e detalhes por campo para body inválido', async () => {
-      const res = await post({ site_id: '', type: 'fire', severity: 9 }).expect(422)
+      const res = await post({ siteId: '', type: 'fire', severity: 9 }).expect(422)
 
       const error = errorOf(res)
       expect(error.code).toBe('VALIDATION_ERROR')
       expect(error.details).toEqual(
         expect.arrayContaining([
-          { path: 'site_id', message: 'site_id é obrigatório' },
+          { path: 'siteId', message: 'siteId é obrigatório' },
           { path: 'severity', message: 'severity deve estar entre 1 e 5' },
-          { path: 'detected_at', message: 'detected_at é obrigatório' },
+          { path: 'detectedAt', message: 'detectedAt é obrigatório' },
         ]),
       )
     })
@@ -163,7 +163,7 @@ describe('Occurrences (e2e)', () => {
       const res = await t.http
         .post('/occurrences')
         .set('Content-Type', 'application/json')
-        .send('{"site_id":')
+        .send('{"siteId":')
         .expect(400)
 
       expect(errorOf(res).code).toBe('BAD_REQUEST')
@@ -195,11 +195,11 @@ describe('Occurrences (e2e)', () => {
       const at = (minutes: number) => new Date(T0.getTime() + minutes * MINUTE).toISOString()
 
       // Exemplo do enunciado: intrusion 3 (9) > perimeter_breach 4 (8) > low_battery 5 (5)
-      await create({ type: 'low_battery', severity: 5, detected_at: at(1) })
-      await create({ type: 'perimeter_breach', severity: 4, detected_at: at(2) })
-      await create({ type: 'intrusion', severity: 3, detected_at: at(0) })
+      await create({ type: 'low_battery', severity: 5, detectedAt: at(1) })
+      await create({ type: 'perimeter_breach', severity: 4, detectedAt: at(2) })
+      await create({ type: 'intrusion', severity: 3, detectedAt: at(0) })
       // Empata com low_battery (5), mas é mais recente
-      await create({ type: 'signal_loss', severity: 5, detected_at: at(3) })
+      await create({ type: 'signal_loss', severity: 5, detectedAt: at(3) })
 
       const items = await list()
 
@@ -221,18 +221,17 @@ describe('Occurrences (e2e)', () => {
       expect(await list('?status=resolved')).toEqual([])
     })
 
-    it('filtra por site_id e aceita siteId (grafia do enunciado)', async () => {
-      await create({ site_id: 'site-a' })
-      await create({ site_id: 'site-b' })
+    it('filtra por siteId', async () => {
+      await create({ siteId: 'site-a' })
+      await create({ siteId: 'site-b' })
 
-      expect((await list('?site_id=site-b')).map((o) => o.site_id)).toEqual(['site-b'])
-      expect((await list('?siteId=site-a')).map((o) => o.site_id)).toEqual(['site-a'])
-      expect(await list('?status=open&site_id=site-a')).toHaveLength(1)
+      expect((await list('?siteId=site-b')).map((o) => o.siteId)).toEqual(['site-b'])
+      expect(await list('?status=open&siteId=site-a')).toHaveLength(1)
     })
 
     it('filtros vazios valem como ausentes (?status=&siteId=)', async () => {
-      await create({ site_id: 'site-a' })
-      await create({ site_id: 'site-b' })
+      await create({ siteId: 'site-a' })
+      await create({ siteId: 'site-b' })
 
       expect(await list('?status=&siteId=')).toHaveLength(2)
     })

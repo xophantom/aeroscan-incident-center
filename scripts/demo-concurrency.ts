@@ -11,14 +11,14 @@ if (!Number.isInteger(total) || total < 1) {
 // Site único por execução, para não agrupar com rodadas anteriores
 const siteId = `demo-${Date.now()}`
 const alert = {
-  site_id: siteId,
-  drone_id: 'drone-demo',
+  siteId,
+  droneId: 'drone-demo',
   type: 'intrusion',
   severity: 1,
-  detected_at: new Date().toISOString(),
+  detectedAt: new Date().toISOString(),
 }
 
-console.log(`→ ${total} POSTs idênticos e simultâneos em ${apiUrl}/occurrences (site_id=${siteId})`)
+console.log(`→ ${total} POSTs idênticos e simultâneos em ${apiUrl}/occurrences (siteId=${siteId})`)
 
 const statuses = await Promise.all(
   Array.from({ length: total }, async () => {
@@ -40,7 +40,7 @@ for (const [status, list] of Object.entries(byStatus)) {
   console.log(`  HTTP ${status} (${meaning}): ${list?.length ?? 0}`)
 }
 
-const res = await fetch(`${apiUrl}/occurrences?site_id=${encodeURIComponent(siteId)}`)
+const res = await fetch(`${apiUrl}/occurrences?siteId=${encodeURIComponent(siteId)}`)
 const occurrences = (await res.json()) as Array<{ id: string; count: number; severity: number }>
 
 console.log(`\nOcorrências para ${siteId}: ${occurrences.length}`)

@@ -63,12 +63,12 @@ export function OccurrenceItem({
             </Badge>
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Site <strong className="font-medium text-slate-800">{occurrence.site_id}</strong> ·
-            Drone {occurrence.drone_id}
+            Site <strong className="font-medium text-slate-800">{occurrence.siteId}</strong> · Drone{' '}
+            {occurrence.droneId}
           </p>
           <p className="text-xs text-slate-500">
-            Detectada em {formatDateTime(occurrence.detected_at)}
-            {repeated && ` · último alerta em ${formatDateTime(occurrence.last_detected_at)}`}
+            Detectada em {formatDateTime(occurrence.detectedAt)}
+            {repeated && ` · último alerta em ${formatDateTime(occurrence.lastDetectedAt)}`}
           </p>
           {occurrence.note && (
             <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">

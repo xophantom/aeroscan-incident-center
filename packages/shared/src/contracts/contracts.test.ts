@@ -29,22 +29,22 @@ describe('isErrorResponse', () => {
 })
 
 describe('occurrenceResponseSchema', () => {
-  it('descreve o contrato snake_case', () => {
+  it('descreve o contrato camelCase do enunciado', () => {
     const iso = '2026-09-25T14:00:00.000Z'
     const response = {
       id: '66f4a1c2e4b0a1b2c3d4e5f6',
-      site_id: 'site-a',
-      drone_id: 'drone-1',
+      siteId: 'site-a',
+      droneId: 'drone-1',
       type: 'intrusion',
       severity: 3,
       priority: 9,
       status: 'open',
       count: 1,
       note: null,
-      detected_at: iso,
-      last_detected_at: iso,
-      created_at: iso,
-      updated_at: iso,
+      detectedAt: iso,
+      lastDetectedAt: iso,
+      createdAt: iso,
+      updatedAt: iso,
     }
 
     expect(occurrenceResponseSchema.parse(response)).toEqual(response)

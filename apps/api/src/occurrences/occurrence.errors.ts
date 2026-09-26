@@ -23,9 +23,9 @@ export function invalidStatusTransition(
 }
 
 export function detectedAtInFuture(): AppException {
-  const message = 'detected_at não pode estar no futuro'
+  const message = 'detectedAt não pode estar no futuro'
   return new AppException('VALIDATION_ERROR', message, HttpStatus.UNPROCESSABLE_ENTITY, [
-    { path: 'detected_at', message },
+    { path: 'detectedAt', message },
   ])
 }
 
