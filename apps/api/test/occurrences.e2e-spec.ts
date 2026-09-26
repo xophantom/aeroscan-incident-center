@@ -265,6 +265,9 @@ describe('Occurrences (e2e)', () => {
     it.each([
       ['text/plain', 'oi'],
       ['application/json', '[]'],
+      ['application/json', '42'],
+      ['application/json', 'null'],
+      ['application/json', '"texto"'],
     ])('422 em PT-BR para corpo que não é objeto JSON (%s %s)', async (contentType, body) => {
       const res = await t.http
         .post('/occurrences')

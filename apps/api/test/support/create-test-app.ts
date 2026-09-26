@@ -1,6 +1,5 @@
-import type { Server } from 'node:http'
-import type { INestApplication } from '@nestjs/common'
 import { getConnectionToken } from '@nestjs/mongoose'
+import type { NestExpressApplication } from '@nestjs/platform-express'
 import { AbstractLoader, ExpressLoader } from '@nestjs/serve-static'
 import { Test } from '@nestjs/testing'
 import { MongoMemoryServer } from 'mongodb-memory-server'
@@ -8,14 +7,14 @@ import type { Connection } from 'mongoose'
 import request from 'supertest'
 import { AppModule } from '../../src/app.module'
 import { AppConfig } from '../../src/config/app-config'
-import { configureApp } from '../../src/configure-app'
+import { APP_OPTIONS, configureApp } from '../../src/configure-app'
 import { ClockService } from '../../src/infra/clock/clock.service'
 import { FakeClock } from './fake-clock'
 
 export const T0 = new Date('2026-09-25T12:00:00.000Z')
 
 export interface TestApp {
-  app: INestApplication
+  app: NestExpressApplication
   connection: Connection
   clock: FakeClock
   http: ReturnType<typeof request>
@@ -54,7 +53,7 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
     .useValue(new ExpressLoader())
     .compile()
 
-  const app = configureApp(moduleRef.createNestApplication({ bufferLogs: true }))
+  const app = configureApp(moduleRef.createNestApplication<NestExpressApplication>(APP_OPTIONS))
   // Porta real: requisições em paralelo (teste de concorrência) chegam de fato simultâneas
   await app.listen(0, '127.0.0.1')
 
@@ -64,7 +63,7 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
     app,
     connection,
     clock,
-    http: request(app.getHttpServer() as Server),
+    http: request(app.getHttpServer()),
     async reset() {
       clock.set(T0)
       // deleteMany (e não dropDatabase) para manter os índices criados no boot
