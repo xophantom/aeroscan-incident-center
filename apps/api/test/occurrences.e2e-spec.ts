@@ -57,7 +57,7 @@ describe('Occurrences (e2e)', () => {
   const post = (body: object) => t.http.post('/occurrences').send(body)
   const patch = (id: string, body: object) => t.http.patch(`/occurrences/${id}/status`).send(body)
 
-  // Toda resposta de sucesso passa pelo schema do contrato que o front também usa
+  // Os helpers validam as respostas com o schema do contrato, o mesmo que o front usa
   async function list(query = ''): Promise<OccurrenceResponse[]> {
     const res = await t.http.get(`/occurrences${query}`).expect(200)
     return z.array(occurrenceResponseSchema).parse(res.body)

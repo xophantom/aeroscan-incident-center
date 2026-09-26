@@ -22,7 +22,10 @@ export interface TestApp {
   close(): Promise<void>
 }
 
-/** App real (mesmo AppModule e configureApp do main.ts) contra um Mongo em memória. */
+/**
+ * O mesmo AppModule e configureApp do main.ts contra um Mongo em memória; só config, relógio e o
+ * loader do front são trocados.
+ */
 export async function createTestApp(): Promise<TestApp> {
   const mongo = await MongoMemoryServer.create()
   const clock = new FakeClock(T0)

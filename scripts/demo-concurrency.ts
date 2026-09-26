@@ -1,4 +1,5 @@
-// Dispara N POSTs idênticos em paralelo contra a API no ar e mostra que o dedup resiste à corrida.
+// Dispara N POSTs idênticos e simultâneos contra a API no ar e confere que viram 1 ocorrência
+// com count N.
 // Uso: pnpm demo:concurrency [N]   (API_URL=http://localhost:3000 por padrão)
 
 const apiUrl = (process.env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, '')

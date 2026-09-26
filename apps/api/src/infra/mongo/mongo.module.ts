@@ -9,7 +9,7 @@ import { MongoHealth } from './mongo-health'
       inject: [AppConfig],
       useFactory: (config: AppConfig) => ({
         uri: config.mongoUri,
-        // Índices são criados explicitamente no boot (syncIndexes), não em background
+        // Índices são sincronizados no boot (syncIndexes cria os do schema e remove os que saíram)
         autoIndex: false,
         serverSelectionTimeoutMS: 5_000,
       }),

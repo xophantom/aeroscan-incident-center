@@ -1,6 +1,5 @@
 import type { OccurrenceStatus, OccurrenceType } from '@aeroscan/shared'
 
-/** Ocorrência como o service enxerga: sem nada de Mongoose. */
 export interface Occurrence {
   id: string
   siteId: string

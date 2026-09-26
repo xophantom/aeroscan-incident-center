@@ -67,7 +67,10 @@ export class OccurrencesRepository implements OnModuleInit {
     return last?.seq ?? 0
   }
 
-  /** Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo dentro da janela do alerta. */
+  /**
+   * Agrupa, de forma atômica, na ocorrência aberta mais antiga do site+tipo dentro da janela do
+   * alerta.
+   */
   async groupIntoOpenOccurrence(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
     const { from, to } = dedupWindow(alert.detectedAt)
     const doc = await this.model
