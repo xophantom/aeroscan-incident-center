@@ -185,24 +185,24 @@ describe('Occurrences (e2e)', () => {
       expect(res.body).toMatchObject({ id: first.id, count: 2 })
     })
 
-    it('concorrência fora de ordem: alertas de T0 e T0+15 min em paralelo viram 2 ocorrências, sem 409', async () => {
-      t.clock.advance(15 * MINUTE_MS)
+    it('concorrência fora de ordem: 60 alertas em 5 janelas, em paralelo, viram 5 ocorrências sem erro', async () => {
+      const windows = [0, 15, 30, 45, 60]
+      t.clock.advance(60 * MINUTE_MS)
 
-      for (let round = 0; round < 5; round++) {
+      for (let round = 0; round < 3; round++) {
         const siteId = `stress-${round}`
-        const bodies = Array.from({ length: 40 }, (_, i) =>
-          alert({ siteId, detectedAt: at(i % 2 === 0 ? 0 : 15) }),
+        const bodies = Array.from({ length: 60 }, (_, i) =>
+          alert({ siteId, detectedAt: at(windows[i % windows.length] ?? 0) }),
         )
 
         const responses = await Promise.all(bodies.map((body) => post(body)))
 
         expect(responses.map((r) => r.status).sort()).toEqual([
-          ...Array<number>(38).fill(200),
-          201,
-          201,
+          ...Array<number>(55).fill(200),
+          ...Array<number>(5).fill(201),
         ])
         const counts = (await list(`?siteId=${siteId}`)).map((o) => o.count)
-        expect(counts).toEqual([20, 20])
+        expect(counts).toEqual([12, 12, 12, 12, 12])
       }
     })
 
@@ -566,7 +566,7 @@ describe('Occurrences (e2e)', () => {
         ['siteId', false],
       ])
       expect(Object.keys(register?.responses ?? {})).toEqual(
-        expect.arrayContaining(['200', '201', '400', '409', '413', '415', '422']),
+        expect.arrayContaining(['200', '201', '400', '413', '415', '422', '503']),
       )
       expect(Object.keys(changeStatus?.responses ?? {})).toEqual(
         expect.arrayContaining(['200', '400', '404', '409', '413', '415', '422']),

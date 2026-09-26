@@ -18,7 +18,9 @@ import {
 } from './occurrence.errors'
 import { OccurrencesRepository } from './occurrences.repository'
 
-export const MAX_DEDUP_ATTEMPTS = 3
+// Cada E11000 é uma criação de outra requisição no mesmo site+tipo: com N janelas novas surgindo ao
+// mesmo tempo (ex.: drone despejando alertas atrasados), um alerta precisa de até N tentativas
+export const MAX_DEDUP_ATTEMPTS = 10
 
 export interface RegisterResult {
   occurrence: Occurrence

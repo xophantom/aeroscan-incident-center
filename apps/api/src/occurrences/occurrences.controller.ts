@@ -31,6 +31,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiPayloadTooLargeResponse,
+  ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnprocessableEntityResponse,
   ApiUnsupportedMediaTypeResponse,
@@ -78,9 +79,9 @@ export class OccurrencesController {
   @ApiOperation({ summary: 'Registra um alerta', description: REGISTER_DESCRIPTION })
   @ApiCreatedResponse({ type: OccurrenceResponseDto, description: 'Ocorrência criada' })
   @ApiOkResponse({ type: OccurrenceResponseDto, description: 'Agrupado em ocorrência existente' })
-  @ApiConflictResponse({
+  @ApiServiceUnavailableResponse({
     type: ErrorResponseDto,
-    description: 'WRITE_CONFLICT: retentativas de agrupar/criar esgotadas sob concorrência',
+    description: 'WRITE_CONFLICT: retentativas esgotadas sob concorrência (repita o pedido)',
   })
   @ApiBodyErrors()
   async create(

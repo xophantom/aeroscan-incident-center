@@ -84,7 +84,7 @@ describe('OccurrencesService.register', () => {
     expect(repository.insertAtVersion).not.toHaveBeenCalled()
   })
 
-  it('lê a versão antes de buscar e cria na versão seguinte à lida', async () => {
+  it('lê a versão antes de buscar e a repassa para o insert', async () => {
     const { service, repository } = setup()
     const created = occurrence()
     repository.creationVersion.mockResolvedValue(4)
@@ -108,13 +108,13 @@ describe('OccurrencesService.register', () => {
     expect(repository.insertAtVersion).toHaveBeenCalledTimes(1)
   })
 
-  it(`desiste após ${MAX_DEDUP_ATTEMPTS} tentativas com WRITE_CONFLICT (409)`, async () => {
+  it(`desiste após ${MAX_DEDUP_ATTEMPTS} tentativas com WRITE_CONFLICT (503)`, async () => {
     const { service, repository } = setup()
 
     const error = await appError(service.register(alert))
 
     expect(error.code).toBe('WRITE_CONFLICT')
-    expect(error.getStatus()).toBe(409)
+    expect(error.getStatus()).toBe(503)
     expect(repository.insertAtVersion).toHaveBeenCalledTimes(MAX_DEDUP_ATTEMPTS)
   })
 

@@ -31,6 +31,9 @@ const HTTP_ERRORS: Partial<Record<number, { code: ErrorCode; message: string }>>
   },
 }
 
+// Erros passageiros: o cliente pode repetir o pedido
+const TRANSIENT_CODES: ReadonlySet<ErrorCode> = new Set(['WRITE_CONFLICT'])
+
 /** Toda resposta de erro sai no envelope `{ error: { code, message, details? } }`. */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -40,7 +43,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const { status, body } = toErrorReply(exception)
     if (status >= 500) this.logger.error(exception)
 
-    host.switchToHttp().getResponse<Response>().status(status).json(body)
+    const response = host.switchToHttp().getResponse<Response>()
+    if (TRANSIENT_CODES.has(body.error.code)) response.setHeader('Retry-After', '1')
+    response.status(status).json(body)
   }
 }
 
