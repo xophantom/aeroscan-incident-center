@@ -638,6 +638,9 @@ describe('Occurrences (e2e)', () => {
       const started = Date.now()
       await t.http.get('/health').expect(503)
       expect(Date.now() - started).toBeLessThan(3_000)
+
+      // Erro do cliente continua sendo do cliente, mesmo com o banco fora
+      await post(alert({ siteId: 'x'.repeat(200_000) })).expect(413)
     })
   })
 })

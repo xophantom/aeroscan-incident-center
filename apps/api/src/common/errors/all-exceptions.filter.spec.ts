@@ -1,9 +1,8 @@
 import { type ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common'
-import type { MongoHealth } from '../../infra/mongo/mongo-health'
 import { AllExceptionsFilter } from './all-exceptions.filter'
 import { AppException } from './app.exception'
 
-function respond(exception: unknown, { databaseConnected = true } = {}) {
+function respond(exception: unknown) {
   const response = {
     headers: {} as Record<string, string>,
     statusCode: 0,
@@ -22,8 +21,7 @@ function respond(exception: unknown, { databaseConnected = true } = {}) {
     },
   }
   const host = { switchToHttp: () => ({ getResponse: () => response }) } as unknown as ArgumentsHost
-  const mongo = { isConnected: () => databaseConnected } as MongoHealth
-  new AllExceptionsFilter(mongo).catch(exception, host)
+  new AllExceptionsFilter().catch(exception, host)
   return response
 }
 
@@ -59,21 +57,6 @@ describe('AllExceptionsFilter', () => {
     expect(response.statusCode).toBe(503)
     expect(response.headers).toEqual({ 'Retry-After': '1' })
     expect(response.body).toMatchObject({ error: { code: 'SERVICE_UNAVAILABLE' } })
-  })
-
-  it('qualquer erro com a conexão já caída vira 503', () => {
-    const response = respond(new Error('buffering timed out'), { databaseConnected: false })
-
-    expect(response.statusCode).toBe(503)
-  })
-
-  it('erro de negócio continua valendo mesmo com o banco fora', () => {
-    const response = respond(
-      new AppException('VALIDATION_ERROR', 'inválido', HttpStatus.UNPROCESSABLE_ENTITY),
-      { databaseConnected: false },
-    )
-
-    expect(response.statusCode).toBe(422)
   })
 
   it('4xx sem mapeamento sai como 400, com código e status coerentes', () => {

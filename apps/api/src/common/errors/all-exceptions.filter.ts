@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common'
 import type { ErrorCode, ErrorResponse } from '@aeroscan/shared'
 import type { Response } from 'express'
-import { MongoHealth } from '../../infra/mongo/mongo-health'
 import { AppException } from './app.exception'
 
 interface ErrorReply {
@@ -35,8 +34,7 @@ const HTTP_ERRORS: Partial<Record<number, { code: ErrorCode; message: string }>>
 // Erros passageiros: o cliente pode repetir o pedido
 const TRANSIENT_CODES: ReadonlySet<ErrorCode> = new Set(['WRITE_CONFLICT', 'SERVICE_UNAVAILABLE'])
 
-// Banco fora: o driver falha ao achar o servidor ou na rede; se o Mongoose já percebeu a queda, a
-// conexão aparece como desconectada
+// Banco fora: o driver do Mongo falha ao achar o servidor ou na rede
 const DATABASE_DOWN_ERRORS = new Set([
   'MongoServerSelectionError',
   'MongoNetworkError',
@@ -44,34 +42,31 @@ const DATABASE_DOWN_ERRORS = new Set([
   'MongoNotConnectedError',
 ])
 
-/** Toda resposta de erro sai no envelope `{ error: { code, message, details? } }`. */
+/** Toda exceção vira resposta no envelope `{ error: { code, message, details? } }`. */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name)
 
-  constructor(private readonly mongo: MongoHealth) {}
-
   catch(exception: unknown, host: ArgumentsHost): void {
-    const { status, body } = this.isDatabaseDown(exception)
-      ? reply(HttpStatus.SERVICE_UNAVAILABLE, 'SERVICE_UNAVAILABLE', 'Banco de dados indisponível')
-      : toErrorReply(exception)
+    const { status, body } = toErrorReply(exception)
     if (status >= 500) this.logger.error(exception)
 
     const response = host.switchToHttp().getResponse<Response>()
     if (TRANSIENT_CODES.has(body.error.code)) response.setHeader('Retry-After', '1')
     response.status(status).json(body)
   }
-
-  private isDatabaseDown(exception: unknown): boolean {
-    if (exception instanceof HttpException) return false
-    const driverError = exception instanceof Error && DATABASE_DOWN_ERRORS.has(exception.name)
-    return driverError || !this.mongo.isConnected()
-  }
 }
 
 function toErrorReply(exception: unknown): ErrorReply {
   if (exception instanceof AppException) {
     return reply(exception.getStatus(), exception.code, exception.message, exception.details)
+  }
+  if (exception instanceof Error && DATABASE_DOWN_ERRORS.has(exception.name)) {
+    return reply(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'SERVICE_UNAVAILABLE',
+      'Banco de dados indisponível',
+    )
   }
 
   const status = httpStatusOf(exception)
