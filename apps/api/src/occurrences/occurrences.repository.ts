@@ -1,0 +1,164 @@
+import {
+  MAX_SEVERITY,
+  TYPE_WEIGHT,
+  computePriority,
+  dedupWindowStart,
+  type CreateOccurrenceInput,
+  type OccurrenceFilter,
+  type OccurrenceStatus,
+  type UpdateStatusInput,
+} from '@aeroscan/shared'
+import { Injectable, type OnModuleInit } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
+import { isObjectIdOrHexString, type FilterQuery, type Model } from 'mongoose'
+import type { Occurrence } from './occurrence'
+import { OCCURRENCE_MODEL, type LeanOccurrence, type OccurrenceDocument } from './occurrence.schema'
+
+/** Único ponto que conhece Mongoose. */
+@Injectable()
+export class OccurrencesRepository implements OnModuleInit {
+  constructor(@InjectModel(OCCURRENCE_MODEL) private readonly model: Model<OccurrenceDocument>) {}
+
+  // O índice único parcial é parte da corretude do dedup: precisa existir antes da 1ª requisição
+  async onModuleInit(): Promise<void> {
+    await this.model.syncIndexes()
+  }
+
+  /** Agrupa o alerta, de forma atômica, na janela aberta do mesmo site+tipo (se existir). */
+  async groupIntoActiveWindow(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+    const doc = await this.model
+      .findOneAndUpdate(
+        {
+          siteId: alert.siteId,
+          type: alert.type,
+          status: 'open',
+          activeWindow: true,
+          detectedAt: { $gte: dedupWindowStart(alert.detectedAt) },
+        },
+        // Update em pipeline: o banco calcula a partir do valor atual, sem ler-e-escrever
+        [
+          {
+            $set: {
+              count: { $add: ['$count', 1] },
+              severity: { $min: [{ $add: ['$severity', 1] }, MAX_SEVERITY] },
+              lastDetectedAt: { $max: ['$lastDetectedAt', alert.detectedAt] },
+            },
+          },
+          { $set: { priority: { $multiply: ['$severity', TYPE_WEIGHT[alert.type]] } } },
+        ],
+        { new: true },
+      )
+      .lean<LeanOccurrence>()
+
+    return doc && toOccurrence(doc)
+  }
+
+  /**
+   * Fecha janelas do site+tipo que não agrupam mais: expiradas ou fora de `open`.
+   * É o complemento exato do filtro acima, então nunca fecha uma janela válida recém-criada.
+   */
+  async closeStaleWindows(alert: CreateOccurrenceInput): Promise<void> {
+    await this.model.updateMany(
+      {
+        siteId: alert.siteId,
+        type: alert.type,
+        activeWindow: true,
+        $or: [
+          { status: { $ne: 'open' } },
+          { detectedAt: { $lt: dedupWindowStart(alert.detectedAt) } },
+        ],
+      },
+      { $set: { activeWindow: false } },
+    )
+  }
+
+  /** Abre uma janela nova. Retorna null se outra requisição abriu antes (índice único → E11000). */
+  async insertActive(alert: CreateOccurrenceInput): Promise<Occurrence | null> {
+    try {
+      const doc = await this.model.create({
+        siteId: alert.siteId,
+        droneId: alert.droneId,
+        type: alert.type,
+        severity: alert.severity,
+        priority: computePriority(alert.severity, alert.type),
+        status: 'open',
+        count: 1,
+        note: null,
+        detectedAt: alert.detectedAt,
+        lastDetectedAt: alert.detectedAt,
+        activeWindow: true,
+      })
+      return toOccurrence(doc.toObject())
+    } catch (error) {
+      if (isDuplicateKeyError(error)) return null
+      throw error
+    }
+  }
+
+  async list(filter: OccurrenceFilter): Promise<Occurrence[]> {
+    const query: FilterQuery<OccurrenceDocument> = {}
+    if (filter.status) query.status = filter.status
+    if (filter.siteId) query.siteId = filter.siteId
+
+    const docs = await this.model
+      .find(query)
+      .sort({ priority: -1, detectedAt: -1 })
+      .lean<LeanOccurrence[]>()
+
+    return docs.map(toOccurrence)
+  }
+
+  async findById(id: string): Promise<Occurrence | null> {
+    if (!isObjectIdOrHexString(id)) return null
+    const doc = await this.model.findById(id).lean<LeanOccurrence>()
+    return doc && toOccurrence(doc)
+  }
+
+  /** Update condicional: só aplica se o status ainda for `from` (dois "Reconhecer" não passam juntos). */
+  async changeStatus(
+    id: string,
+    from: OccurrenceStatus,
+    change: UpdateStatusInput,
+  ): Promise<Occurrence | null> {
+    if (!isObjectIdOrHexString(id)) return null
+
+    const doc = await this.model
+      .findOneAndUpdate(
+        { _id: id, status: from },
+        {
+          $set: {
+            status: change.status,
+            // Saiu de open: alertas novos do mesmo site+tipo abrem outra ocorrência
+            activeWindow: false,
+            ...(change.status === 'resolved' ? { note: change.note } : {}),
+          },
+        },
+        { new: true },
+      )
+      .lean<LeanOccurrence>()
+
+    return doc && toOccurrence(doc)
+  }
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 11000
+}
+
+function toOccurrence(doc: LeanOccurrence): Occurrence {
+  return {
+    id: doc._id.toHexString(),
+    siteId: doc.siteId,
+    droneId: doc.droneId,
+    type: doc.type,
+    severity: doc.severity,
+    priority: doc.priority,
+    status: doc.status,
+    count: doc.count,
+    note: doc.note,
+    detectedAt: doc.detectedAt,
+    lastDetectedAt: doc.lastDetectedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  }
+}
