@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Contexto de build: raiz do monorepo (docker compose build / docker build -f apps/api/Dockerfile .)
+# Imagem da API (serve também o frontend-dist). Na raiz do repo: docker build -t aeroscan-api .
 
 FROM node:22-alpine AS base
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -36,4 +36,6 @@ COPY --from=build --chown=node:node /repo/apps/api/dist apps/api/dist
 COPY --chown=node:node frontend-dist frontend-dist
 USER node
 EXPOSE 3000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+  CMD wget -qO- "http://127.0.0.1:${PORT:-3000}/health" > /dev/null || exit 1
 CMD ["node", "apps/api/dist/main.js"]

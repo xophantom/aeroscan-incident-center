@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectConnection } from '@nestjs/mongoose'
 import { ConnectionStates, type Connection } from 'mongoose'
 
-// O probe do compose desiste em 3 s: o ping responde antes disso mesmo com o Mongo travado
+// O healthcheck da imagem desiste em 3 s: o ping responde antes disso mesmo com o Mongo travado
 const PING_TIMEOUT_MS = 1_500
 
 @Injectable()

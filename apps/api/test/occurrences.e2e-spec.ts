@@ -616,7 +616,7 @@ describe('Occurrences (e2e)', () => {
 
   // Por último: derruba o Mongo em memória de vez
   describe('banco fora do ar', () => {
-    it('listagem responde 503 no envelope e o /health responde antes do probe (3 s)', async () => {
+    it('listagem responde 503 no envelope e o /health responde antes do healthcheck desistir (3 s)', async () => {
       await t.stopDatabase()
 
       const res = await t.http.get('/occurrences').expect(503)

@@ -13,7 +13,7 @@ import { AppConfig } from '../../config/app-config'
           transport: config.logPretty
             ? { target: require.resolve('pino-pretty'), options: { singleLine: true } }
             : undefined,
-          // Healthcheck do compose bate a cada 10s: não polui o log de acesso
+          // O healthcheck da imagem bate a cada 10 s: não polui o log de acesso
           autoLogging: { ignore: (req) => req.url === '/health' },
         },
       }),
