@@ -604,4 +604,19 @@ describe('Occurrences (e2e)', () => {
       expect(res.headers['access-control-allow-origin']).toBeUndefined()
     })
   })
+
+  // Por último: derruba o Mongo em memória de vez
+  describe('banco fora do ar', () => {
+    it('listagem responde 503 no envelope e o /health responde antes do probe (3 s)', async () => {
+      await t.stopDatabase()
+
+      const res = await t.http.get('/occurrences').expect(503)
+      expect(res.headers['retry-after']).toBe('1')
+      expect(errorOf(res).code).toBe('SERVICE_UNAVAILABLE')
+
+      const started = Date.now()
+      await t.http.get('/health').expect(503)
+      expect(Date.now() - started).toBeLessThan(3_000)
+    })
+  })
 })

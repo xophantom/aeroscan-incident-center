@@ -19,6 +19,7 @@ export interface TestApp {
   clock: FakeClock
   http: ReturnType<typeof request>
   reset(): Promise<void>
+  stopDatabase(): Promise<void>
   close(): Promise<void>
 }
 
@@ -71,6 +72,9 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
       clock.set(T0)
       // deleteMany (e não dropDatabase) para manter os índices criados no boot
       await Promise.all(Object.values(connection.collections).map((c) => c.deleteMany({})))
+    },
+    async stopDatabase() {
+      await mongo.stop()
     },
     async close() {
       await app.close()
