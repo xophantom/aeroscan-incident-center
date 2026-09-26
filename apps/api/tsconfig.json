@@ -5,6 +5,8 @@
     "lib": ["ES2023"],
     // CommonJS que pode dar require() no shared (ESM), como o Node faz desde a 20.19/22.12
     "module": "Node20",
+    // Cada arquivo transpila sozinho: o ts-jest não precisa do build do shared (o typecheck cobre os tipos)
+    "isolatedModules": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "sourceMap": true,

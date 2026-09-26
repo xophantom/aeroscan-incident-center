@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // O Jest roda em CommonJS: transpila tudo, inclusive o src do shared (ESM), para require
+    "module": "CommonJS"
+  }
+}

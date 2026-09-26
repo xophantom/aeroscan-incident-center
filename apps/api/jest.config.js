@@ -3,7 +3,7 @@ module.exports = {
   rootDir: 'src',
   testEnvironment: 'node',
   testRegex: '\\.spec\\.ts$',
-  transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/../tsconfig.json' }] },
+  transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/../tsconfig.spec.json' }] },
   moduleNameMapper: {
     // Testes usam o fonte do shared: não dependem de build e cobrem o código real
     '^@aeroscan/shared$': '<rootDir>/../../../packages/shared/src/index.ts',
