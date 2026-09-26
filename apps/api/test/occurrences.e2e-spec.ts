@@ -240,6 +240,14 @@ describe('Occurrences (e2e)', () => {
       expect((await list()).map((o) => o.count)).toEqual([1, 1])
     })
 
+    it('422 (e não 500) para detectedAt com offset que não vira data', async () => {
+      const res = await post(alert({ detectedAt: '2026-09-25T12:00:00+24:00' })).expect(422)
+
+      expect(errorOf(res).details).toEqual([
+        { path: 'detectedAt', message: expect.stringContaining('ISO 8601') as unknown },
+      ])
+    })
+
     it('422 com envelope e detalhes por campo para body inválido', async () => {
       const res = await post({ siteId: '', type: 'fire', severity: 9 }).expect(422)
 

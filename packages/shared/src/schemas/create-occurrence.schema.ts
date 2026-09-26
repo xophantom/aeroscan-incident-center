@@ -3,6 +3,7 @@ import { MAX_SEVERITY, MIN_SEVERITY, OCCURRENCE_TYPES } from '../domain/occurren
 import { oneOf, requestBody, requiredText } from './fields.js'
 
 const severityRange = `severity deve estar entre ${MIN_SEVERITY} e ${MAX_SEVERITY}`
+const isoDate = 'detectedAt deve ser uma data ISO 8601 válida (ex.: 2026-09-25T14:00:00Z)'
 
 export const createOccurrenceBodySchema = requestBody({
   siteId: requiredText('siteId'),
@@ -21,11 +22,14 @@ export const createOccurrenceBodySchema = requestBody({
       required_error: 'detectedAt é obrigatório',
       invalid_type_error: 'detectedAt deve ser um texto',
     })
-    .datetime({
-      offset: true,
-      message: 'detectedAt deve ser uma data ISO 8601 (ex.: 2026-09-25T14:00:00Z)',
-    })
-    .transform((value) => new Date(value)),
+    .datetime({ offset: true, message: isoDate })
+    // O formato aceita offsets como +24:00, que não viram data de verdade
+    .transform((value, ctx) => {
+      const date = new Date(value)
+      if (!Number.isNaN(date.getTime())) return date
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: isoDate })
+      return z.NEVER
+    }),
 })
 
 export type CreateOccurrenceBody = z.input<typeof createOccurrenceBodySchema>

@@ -57,6 +57,16 @@ describe('createOccurrenceBodySchema', () => {
     [{ severity: 2.5 }, 'severity', 'severity deve ser um número inteiro'],
     [{ severity: '3' }, 'severity', 'severity deve ser um número'],
     [{ detectedAt: 'ontem' }, 'detectedAt', expect.stringContaining('ISO 8601')],
+    [
+      { detectedAt: '2026-09-25T12:00:00+24:00' },
+      'detectedAt',
+      expect.stringContaining('ISO 8601'),
+    ],
+    [
+      { detectedAt: '2026-09-25T12:00:00+99:00' },
+      'detectedAt',
+      expect.stringContaining('ISO 8601'),
+    ],
     [{ detectedAt: 1700000000 }, 'detectedAt', 'detectedAt deve ser um texto'],
   ])('rejeita %j', (override, path, message) => {
     const result = createOccurrenceBodySchema.safeParse({ ...valid, ...override })
