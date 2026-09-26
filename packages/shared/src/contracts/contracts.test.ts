@@ -46,10 +46,15 @@ describe('occurrenceResponseSchema', () => {
     expect(occurrenceResponseSchema.safeParse(valid).success).toBe(true)
   })
 
-  it.each([{ count: '2' }, { status: 'closed' }, { detectedAt: 'ontem' }, { note: undefined }])(
-    'recusa resposta fora do contrato (%j): o front a trata como inesperada',
-    (change) => {
-      expect(occurrenceResponseSchema.safeParse({ ...valid, ...change }).success).toBe(false)
-    },
-  )
+  it.each([
+    { count: '2' },
+    { count: 0 },
+    { severity: 6 },
+    { priority: 0 },
+    { status: 'closed' },
+    { detectedAt: 'ontem' },
+    { note: undefined },
+  ])('recusa resposta fora do contrato (%j): o front a trata como inesperada', (change) => {
+    expect(occurrenceResponseSchema.safeParse({ ...valid, ...change }).success).toBe(false)
+  })
 })
