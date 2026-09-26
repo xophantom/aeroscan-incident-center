@@ -159,6 +159,19 @@ describe('Occurrences (e2e)', () => {
       )
     })
 
+    it.each([
+      ['text/plain', 'oi'],
+      ['application/json', '[]'],
+    ])('422 em PT-BR para corpo que não é objeto JSON (%s %s)', async (contentType, body) => {
+      const res = await t.http
+        .post('/occurrences')
+        .set('Content-Type', contentType)
+        .send(body)
+        .expect(422)
+
+      expect(errorOf(res).message).toBe('O corpo da requisição deve ser um objeto JSON')
+    })
+
     it('400 no envelope para JSON malformado', async () => {
       const res = await t.http
         .post('/occurrences')
@@ -257,6 +270,12 @@ describe('Occurrences (e2e)', () => {
 
       expect(errorOf(res).message).toBe('status deve ser um de: open, acknowledged, resolved')
     })
+
+    it('422 para siteId repetido na query', async () => {
+      const res = await t.http.get('/occurrences?siteId=a&siteId=b').expect(422)
+
+      expect(errorOf(res).message).toBe('siteId deve ser um texto')
+    })
   })
 
   describe('PATCH /occurrences/:id/status', () => {
@@ -308,6 +327,14 @@ describe('Occurrences (e2e)', () => {
       const res = await patch(id, { status: 'closed' }).expect(422)
 
       expect(errorOf(res).code).toBe('VALIDATION_ERROR')
+    })
+
+    it('422 em PT-BR para PATCH sem corpo', async () => {
+      const { id } = await create()
+
+      const res = await t.http.patch(`/occurrences/${id}/status`).expect(422)
+
+      expect(errorOf(res).message).toBe('O corpo da requisição deve ser um objeto JSON')
     })
 
     it.each([

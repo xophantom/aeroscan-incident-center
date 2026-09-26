@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import { MAX_SEVERITY, MIN_SEVERITY, OCCURRENCE_TYPES } from '../domain/occurrence.js'
-import { oneOf, requiredText } from './fields.js'
+import { oneOf, requestBody, requiredText } from './fields.js'
 
 const severityRange = `severity deve estar entre ${MIN_SEVERITY} e ${MAX_SEVERITY}`
 
 /** Body do POST /occurrences, com os campos do modelo do enunciado. */
-export const createOccurrenceBodySchema = z.object({
+export const createOccurrenceBodySchema = requestBody({
   siteId: requiredText('siteId'),
   droneId: requiredText('droneId'),
   type: oneOf('type', OCCURRENCE_TYPES),

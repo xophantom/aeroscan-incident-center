@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { OCCURRENCE_STATUSES, type OccurrenceStatus } from '../domain/occurrence.js'
+import { REQUEST_BODY_MESSAGE } from './fields.js'
 
 export const NOTE_MAX_LENGTH = 1000
 const noteRequired = 'A nota é obrigatória para resolver a ocorrência'
@@ -25,10 +26,13 @@ export const updateStatusBodySchema = z.discriminatedUnion(
     }),
   ],
   {
-    errorMap: (issue, ctx) =>
-      issue.code === 'invalid_union_discriminator'
-        ? { message: `status deve ser um de: ${OCCURRENCE_STATUSES.join(', ')}` }
-        : { message: ctx.defaultError },
+    // No nível da union só há dois erros: status desconhecido ou corpo que não é objeto
+    errorMap: (issue) => ({
+      message:
+        issue.code === 'invalid_union_discriminator'
+          ? `status deve ser um de: ${OCCURRENCE_STATUSES.join(', ')}`
+          : REQUEST_BODY_MESSAGE,
+    }),
   },
 )
 

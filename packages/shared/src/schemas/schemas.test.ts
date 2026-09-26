@@ -64,6 +64,12 @@ describe('createOccurrenceBodySchema', () => {
     expect(result.success).toBe(false)
     expect(messages(result.error)[path]).toEqual(message)
   })
+
+  it.each([undefined, [], 'texto'])('rejeita corpo que não é objeto (%j)', (body) => {
+    const result = createOccurrenceBodySchema.safeParse(body)
+
+    expect(messages(result.error)).toEqual({ '': 'O corpo da requisição deve ser um objeto JSON' })
+  })
 })
 
 describe('listOccurrencesQuerySchema', () => {
@@ -99,6 +105,12 @@ describe('listOccurrencesQuerySchema', () => {
     expect(messages(result.error)).toEqual({
       siteId: 'siteId deve ter no máximo 100 caracteres',
     })
+  })
+
+  it('rejeita siteId repetido na query (?siteId=a&siteId=b)', () => {
+    const result = listOccurrencesQuerySchema.safeParse({ siteId: ['a', 'b'] })
+
+    expect(messages(result.error)).toEqual({ siteId: 'siteId deve ser um texto' })
   })
 })
 
@@ -144,11 +156,10 @@ describe('updateStatusBodySchema', () => {
     })
   })
 
-  it('rejeita body que não é objeto', () => {
-    const result = updateStatusBodySchema.safeParse('resolved')
+  it.each([undefined, 'resolved'])('rejeita corpo que não é objeto (%j)', (body) => {
+    const result = updateStatusBodySchema.safeParse(body)
 
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.code).toBe('invalid_type')
+    expect(messages(result.error)).toEqual({ '': 'O corpo da requisição deve ser um objeto JSON' })
   })
 })
 
