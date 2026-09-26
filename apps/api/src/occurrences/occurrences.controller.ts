@@ -69,7 +69,7 @@ const ApiBodyErrors = (badRequest: string) =>
     }),
   )
 
-// Todo 503 sai com Retry-After: o pedido pode ser repetido
+// Os 503 destas rotas saem com Retry-After: o pedido pode ser repetido
 const ApiUnavailable = (description: string) =>
   ApiServiceUnavailableResponse({
     type: ErrorResponseDto,

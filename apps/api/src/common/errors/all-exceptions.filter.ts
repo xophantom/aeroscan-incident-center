@@ -80,7 +80,7 @@ function toErrorReply(exception: unknown): ErrorReply {
   return reply(status, 'INTERNAL_ERROR', 'Erro interno do servidor')
 }
 
-// O Nest lança HttpException; o body-parser (413, 415...) lança http-errors, que só trazem `status`
+// http-errors do body-parser (400, 413, 415) não são HttpException: o status vem no campo `status`
 function httpStatusOf(exception: unknown): number {
   if (exception instanceof HttpException) return exception.getStatus()
 

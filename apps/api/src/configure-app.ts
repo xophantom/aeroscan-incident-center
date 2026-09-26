@@ -14,9 +14,8 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
   app.disable('x-powered-by')
   // Aceita qualquer JSON: corpo que não é objeto vira 422 da validação, não 400 do parser
   app.useBodyParser('json', { strict: false })
-  // O padrão libera Origin: null para o front aberto via file://. Não é barreira de segurança:
-  // iframes sandbox também mandam null, e a API não tem autenticação. Com o front num domínio
-  // próprio, CORS_ORIGINS passa a ser só esse domínio.
+  // O padrão (Origin: null) atende o front aberto via file://. Não protege nada: a API não tem
+  // autenticação e iframes sandbox também mandam null. Front num domínio próprio: só ele.
   app.enableCors({ origin: app.get(AppConfig).corsOrigins })
   app.enableShutdownHooks()
 
