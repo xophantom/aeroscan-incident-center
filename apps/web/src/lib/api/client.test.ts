@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import { ApiError, apiRequest } from './client'
 
-function stubFetch(result: Response | Error) {
+function stubFetch(result: Response | Error | DOMException) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() => (result instanceof Error ? Promise.reject(result) : Promise.resolve(result))),
+    vi.fn(() => (result instanceof Response ? Promise.resolve(result) : Promise.reject(result))),
   )
 }
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+const itemsSchema = z.array(z.object({ id: z.string() }))
 
 async function apiError(promise: Promise<unknown>): Promise<ApiError> {
   const error: unknown = await promise.catch((caught: unknown) => caught)
@@ -22,39 +25,55 @@ afterEach(() => {
 })
 
 describe('apiRequest', () => {
-  it('devolve o JSON de respostas 2xx', async () => {
+  it('devolve a resposta 2xx validada pelo schema', async () => {
     stubFetch(json([{ id: 'a' }], 200))
 
-    await expect(apiRequest('/occurrences')).resolves.toEqual([{ id: 'a' }])
+    await expect(apiRequest('/occurrences', itemsSchema)).resolves.toEqual([{ id: 'a' }])
+  })
+
+  it('resposta 2xx fora do contrato vira UNEXPECTED_RESPONSE', async () => {
+    stubFetch(json(null, 200))
+
+    const error = await apiError(apiRequest('/occurrences', itemsSchema))
+
+    expect(error.code).toBe('UNEXPECTED_RESPONSE')
   })
 
   it('converte o envelope de erro da API em ApiError', async () => {
     const details = { from: 'open', to: 'resolved' }
     stubFetch(json({ error: { code: 'INVALID_STATUS_TRANSITION', message: 'x', details } }, 409))
 
-    const error = await apiError(apiRequest('/occurrences/1/status', { method: 'PATCH', body: {} }))
+    const error = await apiError(
+      apiRequest('/occurrences/1/status', itemsSchema, { method: 'PATCH', body: {} }),
+    )
 
-    expect(error).toMatchObject({
-      status: 409,
-      code: 'INVALID_STATUS_TRANSITION',
-      message: 'x',
-      details,
-    })
+    expect(error).toMatchObject({ code: 'INVALID_STATUS_TRANSITION', message: 'x', details })
   })
 
   it('falha de rede vira NETWORK_ERROR', async () => {
     stubFetch(new TypeError('Failed to fetch'))
 
-    const error = await apiError(apiRequest('/occurrences'))
+    const error = await apiError(apiRequest('/occurrences', itemsSchema))
 
-    expect(error).toMatchObject({ status: 0, code: 'NETWORK_ERROR' })
+    expect(error.code).toBe('NETWORK_ERROR')
+  })
+
+  it('API que não responde a tempo vira TIMEOUT', async () => {
+    stubFetch(new DOMException('signal timed out', 'TimeoutError'))
+
+    const error = await apiError(apiRequest('/occurrences', itemsSchema))
+
+    expect(error.code).toBe('TIMEOUT')
   })
 
   it('erro fora do envelope vira UNEXPECTED_RESPONSE', async () => {
     stubFetch(new Response('<html>Bad Gateway</html>', { status: 502 }))
 
-    const error = await apiError(apiRequest('/occurrences'))
+    const error = await apiError(apiRequest('/occurrences', itemsSchema))
 
-    expect(error).toMatchObject({ status: 502, code: 'UNEXPECTED_RESPONSE' })
+    expect(error).toMatchObject({
+      code: 'UNEXPECTED_RESPONSE',
+      message: 'Resposta inesperada da API (HTTP 502).',
+    })
   })
 })
