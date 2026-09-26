@@ -1,0 +1,37 @@
+{
+  "name": "aeroscan",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "bootstrap": "pnpm --filter @aeroscan/shared build",
+    "build": "pnpm -r build",
+    "build:web": "pnpm bootstrap && pnpm --filter @aeroscan/web build && tsx scripts/publish-web.ts",
+    "dev": "pnpm bootstrap && pnpm --parallel --filter @aeroscan/api --filter @aeroscan/web dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "demo:concurrency": "tsx scripts/demo-concurrency.ts"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "mongodb-memory-server"
+    ],
+    "ignoredBuiltDependencies": [
+      "@parcel/watcher",
+      "@scarf/scarf",
+      "unrs-resolver"
+    ]
+  }
+}

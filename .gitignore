@@ -1,0 +1,14 @@
+node_modules/
+# builds de pacote; frontend-dist/ é versionado de propósito (entrega do desafio)
+apps/*/dist/
+packages/*/dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Enunciado do desafio (referência local)
+desafio.pdf
