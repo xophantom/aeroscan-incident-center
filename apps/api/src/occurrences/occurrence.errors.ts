@@ -9,6 +9,7 @@ import {
 } from '@aeroscan/shared'
 import { HttpStatus } from '@nestjs/common'
 import { AppException } from '../common/errors/app.exception'
+import { validationError } from '../common/errors/validation'
 
 export function occurrenceNotFound(id: string): AppException {
   return new AppException(
@@ -36,30 +37,25 @@ export function invalidStatusTransition(
 }
 
 export function detectedAtInFuture(): AppException {
-  return invalidDetectedAt(
-    `detectedAt não pode estar mais de ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min no futuro`,
-  )
+  return validationError([
+    {
+      path: 'detectedAt',
+      message: `detectedAt não pode estar mais de ${MAX_FUTURE_SKEW_MS / MINUTE_MS} min no futuro`,
+    },
+  ])
 }
 
 export function detectedAtTooOld(): AppException {
-  return invalidDetectedAt(
-    `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / DAY_MS} dias de atraso`,
-  )
+  return validationError([
+    {
+      path: 'detectedAt',
+      message: `detectedAt não pode ter mais de ${MAX_ALERT_AGE_MS / DAY_MS} dias de atraso`,
+    },
+  ])
 }
 
 export function resolutionNoteRequired(): AppException {
-  return new AppException(
-    'VALIDATION_ERROR',
-    NOTE_REQUIRED_MESSAGE,
-    HttpStatus.UNPROCESSABLE_ENTITY,
-    [{ path: 'note', message: NOTE_REQUIRED_MESSAGE }],
-  )
-}
-
-function invalidDetectedAt(message: string): AppException {
-  return new AppException('VALIDATION_ERROR', message, HttpStatus.UNPROCESSABLE_ENTITY, [
-    { path: 'detectedAt', message },
-  ])
+  return validationError([{ path: 'note', message: NOTE_REQUIRED_MESSAGE }])
 }
 
 export function writeConflict(): AppException {

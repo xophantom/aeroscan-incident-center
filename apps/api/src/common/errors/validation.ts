@@ -18,18 +18,22 @@ function isZodErrorLike(error: unknown): error is ZodErrorLike {
   )
 }
 
-export function validationException(error: unknown): AppException {
-  const issues: ValidationIssue[] = isZodErrorLike(error)
-    ? error.issues.map((issue) => ({
-        path: issue.path.map(String).join('.'),
-        message: issue.message,
-      }))
-    : []
-
+export function validationError(issues: ValidationIssue[]): AppException {
   return new AppException(
     'VALIDATION_ERROR',
     issues[0]?.message ?? 'Dados inválidos',
     HttpStatus.UNPROCESSABLE_ENTITY,
     issues,
+  )
+}
+
+export function validationException(error: unknown): AppException {
+  return validationError(
+    isZodErrorLike(error)
+      ? error.issues.map((issue) => ({
+          path: issue.path.map(String).join('.'),
+          message: issue.message,
+        }))
+      : [],
   )
 }
