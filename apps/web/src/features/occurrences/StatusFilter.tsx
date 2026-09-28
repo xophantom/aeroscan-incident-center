@@ -8,11 +8,7 @@ interface StatusFilterProps {
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
-    <div
-      role="group"
-      aria-label="Filtrar por status"
-      className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
-    >
+    <div role="group" aria-label="Filtrar por status" className="flex overflow-x-auto">
       {STATUS_FILTERS.map((filter) => {
         const active = filter.value === value
         return (
@@ -21,8 +17,8 @@ export function StatusFilter({ value, onChange }: StatusFilterProps) {
             type="button"
             aria-pressed={active}
             onClick={() => onChange(filter.value)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+            className={`border-b-2 px-3 pt-1.5 pb-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+              active ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
             }`}
           >
             {filter.label}

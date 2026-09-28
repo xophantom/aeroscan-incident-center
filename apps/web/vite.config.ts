@@ -26,6 +26,8 @@ export default defineConfig({
     modulePreload: false,
     // Em IIFE o Vite embutiria o CSS no JS; assim sai um .css próprio
     cssCodeSplit: false,
+    // Fonte vira data: URI no CSS, porque via file:// o Chrome bloqueia o arquivo da fonte
+    assetsInlineLimit: (file) => (file.endsWith('.woff2') ? true : undefined),
     rollupOptions: { output: { format: 'iife' } },
   },
   server: {

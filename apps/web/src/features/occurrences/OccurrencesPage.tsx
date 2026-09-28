@@ -35,11 +35,11 @@ function LiveBadge({ status }: { status: LiveStatus }) {
     <span
       role="status"
       title={live ? 'A lista atualiza sozinha quando chegam mudanças' : undefined}
-      className={`inline-flex items-center gap-1.5 text-xs font-medium ${live ? 'text-emerald-700' : 'text-amber-700'}`}
+      className={`inline-flex items-center gap-2 text-sm font-medium ${live ? 'text-live' : 'text-accent'}`}
     >
       <span
         aria-hidden
-        className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'bg-amber-500'}`}
+        className={`size-2 rounded-full ${live ? 'bg-live motion-safe:animate-pulse' : 'bg-accent'}`}
       />
       {LIVE_LABEL[status]}
     </span>
@@ -47,8 +47,8 @@ function LiveBadge({ status }: { status: LiveStatus }) {
 }
 
 function emptyMessage(filter: StatusFilterValue): string {
-  if (filter === 'active') return 'Nenhuma ocorrência aberta ou reconhecida.'
-  if (filter === 'all') return 'Nenhuma ocorrência registrada.'
+  if (filter === 'active') return 'Nada pendente. Alertas novos aparecem aqui assim que chegam.'
+  if (filter === 'all') return 'Nenhuma ocorrência registrada ainda.'
   return `Nenhuma ocorrência ${STATUS_LABEL[filter].toLowerCase()}.`
 }
 
@@ -81,14 +81,11 @@ export function OccurrencesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-widest text-amber-600 uppercase">AeroScan</p>
-          <h1 className="text-2xl font-bold text-slate-900">Triagem de Ocorrências</h1>
-          <p className="text-sm text-slate-600">
-            Mais urgentes primeiro: prioridade = severidade × peso do tipo.
-          </p>
+    <main className="mx-auto max-w-6xl px-4 pt-6 pb-16 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <span className="font-data text-sm font-bold text-accent">AeroScan</span>
+          <h1 className="text-xl font-semibold text-ink">Triagem de ocorrências</h1>
         </div>
         <div className="flex items-center gap-4">
           <LiveBadge status={live} />
@@ -98,8 +95,11 @@ export function OccurrencesPage() {
         </div>
       </header>
 
-      <div className="mb-4">
+      <div className="mt-4 mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <StatusFilter value={filter} onChange={setFilter} />
+        <p className="text-sm text-muted">
+          Mais urgentes no topo: prioridade = severidade × peso do tipo.
+        </p>
       </div>
 
       <OccurrenceList

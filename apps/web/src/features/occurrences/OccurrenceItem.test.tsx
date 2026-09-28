@@ -1,5 +1,5 @@
 import type { OccurrenceResponse } from '@aeroscan/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { occurrence } from '../../test/fixtures'
@@ -12,6 +12,7 @@ function renderItem(overrides: Partial<OccurrenceResponse> = {}) {
     <ul>
       <OccurrenceItem
         occurrence={occurrence({ ...overrides, ...changes })}
+        now={Date.parse('2026-09-25T14:05:00.000Z')}
         busy={false}
         onAcknowledge={onAcknowledge}
         onResolve={onResolve}
@@ -28,6 +29,11 @@ function renderItem(overrides: Partial<OccurrenceResponse> = {}) {
 }
 
 const button = (name: string) => screen.queryByRole('button', { name })
+
+const alertFrom = (droneId: string, minute: number) => ({
+  droneId,
+  detectedAt: new Date(Date.parse('2026-09-25T14:00:00.000Z') + minute * 60_000).toISOString(),
+})
 
 describe('OccurrenceItem: botões por status', () => {
   it('open: só "Reconhecer"', () => {
@@ -104,22 +110,64 @@ describe('OccurrenceItem: botões por status', () => {
 })
 
 describe('OccurrenceItem: dados exibidos', () => {
-  it('mostra ×N quando o alerta se repetiu', () => {
+  it('mostra quantos alertas quando o alerta se repetiu', () => {
     renderItem({ count: 4 })
 
-    expect(screen.getByText('×4')).toHaveAttribute('title', 'Alerta recebido 4 vezes')
+    expect(button('4 alertas')).toHaveAttribute('title', 'Alerta recebido 4 vezes')
   })
 
-  it('lista todos os drones que reportaram', () => {
-    renderItem({ count: 2, droneIds: ['drone-1', 'drone-2'] })
+  it('lista os drones que reportaram, com quantos alertas cada um mandou', () => {
+    renderItem({
+      count: 3,
+      alerts: [alertFrom('drone-1', 0), alertFrom('drone-2', 2), alertFrom('drone-2', 4)],
+    })
 
-    expect(screen.getByText(/Drones drone-1, drone-2/)).toBeInTheDocument()
+    expect(screen.getByText('Drones')).toBeInTheDocument()
+    expect(screen.getByText('drone-1')).toHaveAttribute('title', 'drone-1: 1 alerta')
+    expect(screen.getByText('drone-2')).toHaveAttribute('title', 'drone-2: 2 alertas')
+    expect(screen.getByText('×2')).toBeInTheDocument()
+  })
+
+  it('com mais de 3 drones, o resto vira "+N", que lista todos ao passar o mouse', () => {
+    const drones = ['drone-1', 'drone-2', 'drone-3', 'drone-4', 'drone-5']
+    renderItem({ count: 5, alerts: drones.map((drone, minute) => alertFrom(drone, minute)) })
+
+    // drone-4 e drone-5 só aparecem no tooltip; os 3 primeiros, também na faixa
+    expect(screen.getAllByText('drone-1')).toHaveLength(2)
+    expect(screen.getAllByText('drone-4')).toHaveLength(1)
+    expect(within(screen.getByRole('tooltip')).getByText('drone-4')).toBeInTheDocument()
+    expect(button('Mais 2 drones')).toHaveAccessibleDescription(/drone-1.*drone-5/)
+  })
+
+  it('"N alertas" abre a lista de alertas, do primeiro ao último', async () => {
+    const { user } = renderItem({
+      count: 3,
+      alerts: [alertFrom('drone-1', 0), alertFrom('drone-2', 2), alertFrom('drone-2', 4)],
+    })
+
+    await user.click(button('3 alertas')!)
+
+    const items = within(
+      screen.getByRole('list', { name: 'Alertas, do primeiro ao último' }),
+    ).getAllByRole('listitem')
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('drone-1'),
+      expect.stringContaining('drone-2'),
+      expect.stringContaining('drone-2'),
+    ])
+    expect(button('3 alertas')).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('não mostra contador quando count = 1', () => {
     renderItem({ count: 1 })
 
-    expect(screen.queryByText(/^×/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/alertas$/)).not.toBeInTheDocument()
+  })
+
+  it('mostra a hora da detecção e há quanto tempo foi', () => {
+    renderItem({ detectedAt: '2026-09-25T14:00:00.000Z' })
+
+    expect(screen.getByText('há 5 min')).toBeInTheDocument()
   })
 
   it('mostra badge de severidade e prioridade', () => {

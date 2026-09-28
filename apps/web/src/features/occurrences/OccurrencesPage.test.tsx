@@ -38,7 +38,7 @@ describe('OccurrencesPage', () => {
   it('mostra se a conexão com os avisos está ao vivo', async () => {
     vi.mocked(listOccurrences).mockResolvedValue([])
     renderPage()
-    await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')
+    await screen.findByText('Nada pendente. Alertas novos aparecem aqui assim que chegam.')
 
     act(() => subscription().onStatus('live'))
     expect(screen.getByRole('status')).toHaveTextContent('Ao vivo')
@@ -64,7 +64,9 @@ describe('OccurrencesPage', () => {
     vi.mocked(listOccurrences).mockResolvedValue([])
     const user = renderPage()
 
-    expect(await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Nada pendente. Alertas novos aparecem aqui assim que chegam.'),
+    ).toBeInTheDocument()
     expect(listOccurrences).toHaveBeenLastCalledWith(['open', 'acknowledged'])
 
     await user.click(screen.getByRole('button', { name: 'Abertas' }))
@@ -129,7 +131,7 @@ describe('OccurrencesPage', () => {
     const refresh = deferred<OccurrenceResponse[]>()
     vi.mocked(listOccurrences).mockResolvedValueOnce([]).mockReturnValueOnce(refresh.promise)
     const user = renderPage()
-    await screen.findByText('Nenhuma ocorrência aberta ou reconhecida.')
+    await screen.findByText('Nada pendente. Alertas novos aparecem aqui assim que chegam.')
 
     await user.click(screen.getByRole('button', { name: 'Atualizar' }))
 

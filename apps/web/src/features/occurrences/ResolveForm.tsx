@@ -27,9 +27,9 @@ export function ResolveForm({ describedBy, onSubmit, onCancel }: ResolveFormProp
     <form
       noValidate
       onSubmit={(event) => void submit(event)}
-      className="mt-3 space-y-2 border-t border-slate-100 pt-3"
+      className="space-y-2 border-t border-rule bg-canvas/40 py-3 pr-3 pl-5"
     >
-      <label htmlFor={noteId} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={noteId} className="block text-sm font-medium text-ink">
         Nota de resolução
       </label>
       <textarea
@@ -40,11 +40,11 @@ export function ResolveForm({ describedBy, onSubmit, onCancel }: ResolveFormProp
         placeholder="Ex.: falso positivo; equipe verificou o perímetro."
         aria-invalid={errors.note ? true : undefined}
         aria-describedby={errors.note ? `${describedBy} ${errorId}` : describedBy}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none aria-invalid:border-red-500"
+        className="w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none aria-invalid:border-sev-5"
         {...register('note')}
       />
       {errors.note && (
-        <p id={errorId} className="text-sm text-red-600">
+        <p id={errorId} className="text-sm text-sev-5">
           {errors.note.message}
         </p>
       )}

@@ -1,1 +1,60 @@
 @import 'tailwindcss';
+
+/* Só woff2, embutido no CSS pelo build: o Chrome bloqueia fonte carregada de file:// */
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/barlow/files/barlow-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/barlow/files/barlow-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/barlow/files/barlow-latin-600-normal.woff2') format('woff2');
+}
+/* B612: desenhada para telas de cockpit; vai nos dados que o gestor lê de relance */
+@font-face {
+  font-family: 'B612';
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/b612/files/b612-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'B612';
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/b612/files/b612-latin-700-normal.woff2') format('woff2');
+}
+
+@theme {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-data: 'B612', ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #0f1823;
+  --color-strip: #16222f;
+  --color-raised: #1c2a3a;
+  --color-rule: #273648;
+  --color-ink: #e4ebf3;
+  --color-muted: #8a9bb0;
+  --color-accent: #f4b740;
+  --color-accent-hover: #f7c966;
+  --color-live: #4fd1a5;
+
+  /* Escala de calor da severidade: 1 frio, 5 quente */
+  --color-sev-1: #6ba6d9;
+  --color-sev-2: #52bfa3;
+  --color-sev-3: #e2c044;
+  --color-sev-4: #ee8a3c;
+  --color-sev-5: #e5484d;
+}
+
+:root {
+  color-scheme: dark;
+}

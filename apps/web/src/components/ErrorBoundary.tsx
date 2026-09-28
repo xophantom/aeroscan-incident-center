@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, { failed: boole
     return (
       <p
         role="alert"
-        className="mx-auto mt-8 max-w-4xl rounded-lg border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800"
+        className="mx-auto mt-8 max-w-4xl rounded-sm border border-sev-5/50 bg-strip p-6 text-center text-sm text-ink"
       >
         Algo deu errado ao exibir a tela. Recarregue a página.
       </p>

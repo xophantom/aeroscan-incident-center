@@ -4,8 +4,8 @@ import { ToastContext, type ToastKind } from './toast-context'
 const DISMISS_AFTER_MS = 5_000
 
 const KIND_CLASS: Record<ToastKind, string> = {
-  error: 'bg-red-700 text-white',
-  success: 'bg-slate-900 text-white',
+  error: 'border-sev-5/60 bg-raised text-ink',
+  success: 'border-live/50 bg-raised text-ink',
 }
 
 interface Toast {
@@ -41,14 +41,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.kind === 'error' ? 'alert' : 'status'}
-            className={`pointer-events-auto flex max-w-md items-start gap-3 rounded-lg px-4 py-3 text-sm shadow-lg ${KIND_CLASS[toast.kind]}`}
+            className={`pointer-events-auto flex max-w-md items-start gap-3 rounded-sm border-l-4 px-4 py-3 text-sm shadow-xl shadow-black/40 ${KIND_CLASS[toast.kind]}`}
           >
             <span className="flex-1">{toast.message}</span>
             <button
               type="button"
               onClick={() => dismiss(toast.id)}
               aria-label="Fechar aviso"
-              className="opacity-70 hover:opacity-100"
+              className="text-muted hover:text-ink"
             >
               ✕
             </button>
