@@ -4,6 +4,7 @@ import {
   OCCURRENCE_TYPES,
   computePriority,
   dedupWindow,
+  parseAlertKey,
   type CreateOccurrenceInput,
   type OccurrenceFilter,
   type OccurrenceStatus,
@@ -231,5 +232,9 @@ function toOccurrence({
   acknowledgedAt,
   ...fields
 }: LeanOccurrence): Occurrence {
-  return { id: _id.toHexString(), ...fields }
+  // As chaves ficam na ordem de chegada; um alerta atrasado vai para o lugar da detecção
+  const alerts = alertKeys
+    .map(parseAlertKey)
+    .sort((a, b) => a.detectedAt.getTime() - b.detectedAt.getTime())
+  return { id: _id.toHexString(), ...fields, alerts }
 }

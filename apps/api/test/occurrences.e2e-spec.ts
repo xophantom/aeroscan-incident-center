@@ -100,10 +100,16 @@ describe('Occurrences (e2e)', () => {
         priority: 9,
         droneId: 'drone-1',
         droneIds: ['drone-1', 'drone-2'],
+        alerts: [
+          { droneId: 'drone-1', detectedAt: T0.toISOString() },
+          { droneId: 'drone-2', detectedAt: t.clock.now().toISOString() },
+        ],
         detectedAt: T0.toISOString(),
         lastDetectedAt: t.clock.now().toISOString(),
       })
-      expect(await list()).toHaveLength(1)
+      expect(await list()).toMatchObject([
+        { id: first.id, alerts: [{ droneId: 'drone-1' }, { droneId: 'drone-2' }] },
+      ])
     })
 
     it('agrupa no limite exato de 10 minutos', async () => {
@@ -185,7 +191,12 @@ describe('Occurrences (e2e)', () => {
 
       const resent = await post(body).expect(200)
 
-      expect(resent.body).toMatchObject({ id: created.id, count: 1, severity: created.severity })
+      expect(resent.body).toMatchObject({
+        id: created.id,
+        count: 1,
+        severity: created.severity,
+        alerts: [{ droneId: 'drone-1' }],
+      })
       expect(await list()).toMatchObject([{ id: created.id, count: 1 }])
     })
 
@@ -296,6 +307,11 @@ describe('Occurrences (e2e)', () => {
         count: 2,
         detectedAt: T0.toISOString(),
         lastDetectedAt: T0.toISOString(),
+        // Chegou por último, mas foi detectado primeiro
+        alerts: [
+          { detectedAt: at(-DEDUP_WINDOW_MS / MINUTE_MS) },
+          { detectedAt: T0.toISOString() },
+        ],
       })
     })
 

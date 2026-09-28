@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alertKey, dedupWindow } from './dedup.js'
+import { alertKey, dedupWindow, parseAlertKey } from './dedup.js'
 
 describe('dedupWindow', () => {
   it('vai de 10 minutos antes a 10 minutos depois da detecção recebida', () => {
@@ -37,5 +37,12 @@ describe('alertKey', () => {
     expect(alertKey({ ...alert, siteId: 'a","b', droneId: 'c' })).not.toBe(
       alertKey({ ...alert, siteId: 'a', droneId: 'b","c' }),
     )
+  })
+
+  it('parseAlertKey devolve o drone e o horário do alerta', () => {
+    expect(parseAlertKey(alertKey({ ...alert, droneId: 'dr-"12"' }))).toEqual({
+      droneId: 'dr-"12"',
+      detectedAt: alert.detectedAt,
+    })
   })
 })

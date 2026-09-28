@@ -25,3 +25,12 @@ export function alertKey(alert: {
   // Lista em JSON, não texto concatenado: um separador dentro do siteId não junta alertas diferentes
   return JSON.stringify([alert.siteId, alert.droneId, alert.type, alert.detectedAt.toISOString()])
 }
+
+/**
+ * O caminho de volta do `alertKey`. As chaves guardadas numa ocorrência são a lista dos alertas
+ * contados nela, com o drone e o horário de cada um.
+ */
+export function parseAlertKey(key: string): { droneId: string; detectedAt: Date } {
+  const [, droneId, , detectedAt] = JSON.parse(key) as [string, string, OccurrenceType, string]
+  return { droneId, detectedAt: new Date(detectedAt) }
+}

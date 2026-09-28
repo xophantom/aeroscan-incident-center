@@ -27,6 +27,7 @@ function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
     siteId: 'site-a',
     droneId: 'drone-1',
     droneIds: ['drone-1'],
+    alerts: [{ droneId: 'drone-1', detectedAt: NOW }],
     type: 'intrusion',
     severity: 2,
     priority: 6,

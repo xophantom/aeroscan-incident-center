@@ -7,6 +7,7 @@ export function occurrence(overrides: Partial<OccurrenceResponse> = {}): Occurre
     siteId: 'site-a',
     droneId: 'drone-1',
     droneIds: ['drone-1'],
+    alerts: [{ droneId: 'drone-1', detectedAt: iso }],
     type: 'intrusion',
     severity: 3,
     priority: 9,

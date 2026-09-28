@@ -30,6 +30,7 @@ describe('occurrenceResponseSchema', () => {
     siteId: 'site-a',
     droneId: 'drone-1',
     droneIds: ['drone-1'],
+    alerts: [{ droneId: 'drone-1', detectedAt: iso }],
     type: 'intrusion',
     severity: 3,
     priority: 9,
@@ -54,6 +55,7 @@ describe('occurrenceResponseSchema', () => {
     { status: 'closed' },
     { detectedAt: 'ontem' },
     { note: undefined },
+    { alerts: [{ droneId: 'drone-1', detectedAt: 'ontem' }] },
   ])('recusa resposta fora do contrato (%j): o front a trata como inesperada', (change) => {
     expect(occurrenceResponseSchema.safeParse({ ...valid, ...change }).success).toBe(false)
   })

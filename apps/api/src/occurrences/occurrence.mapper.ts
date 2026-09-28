@@ -7,6 +7,10 @@ export function toOccurrenceResponse(occurrence: Occurrence): OccurrenceResponse
     siteId: occurrence.siteId,
     droneId: occurrence.droneId,
     droneIds: occurrence.droneIds,
+    alerts: occurrence.alerts.map((alert) => ({
+      droneId: alert.droneId,
+      detectedAt: alert.detectedAt.toISOString(),
+    })),
     type: occurrence.type,
     severity: occurrence.severity,
     priority: occurrence.priority,

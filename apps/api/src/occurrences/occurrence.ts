@@ -1,5 +1,10 @@
 import type { OccurrenceStatus, OccurrenceType } from '@aeroscan/shared'
 
+export interface OccurrenceAlert {
+  droneId: string
+  detectedAt: Date
+}
+
 export interface Occurrence {
   id: string
   siteId: string
@@ -7,6 +12,8 @@ export interface Occurrence {
   droneId: string
   /** Todos os drones que reportaram alertas agrupados nela. */
   droneIds: string[]
+  /** Cada alerta contado, do mais antigo ao mais recente. */
+  alerts: OccurrenceAlert[]
   type: OccurrenceType
   severity: number
   priority: number

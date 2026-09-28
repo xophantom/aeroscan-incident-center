@@ -4,7 +4,7 @@ import type { Occurrence } from './occurrence'
 
 export const OCCURRENCE_MODEL = 'Occurrence'
 
-export interface OccurrenceDocument extends Omit<Occurrence, 'id'> {
+export interface OccurrenceDocument extends Omit<Occurrence, 'id' | 'alerts'> {
   /** Ordem de criação no site+tipo (1, 2, 3...): a versão do controle otimista do dedup. */
   seq: number
   /** Chaves (alertKey) dos alertas já contados aqui: o reenvio de um deles não conta de novo. */
@@ -33,8 +33,8 @@ export const OccurrenceSchema = new Schema<OccurrenceDocument>(
     detectedAt: { type: Date, required: true },
     lastDetectedAt: { type: Date, required: true },
     seq: { type: Number, min: 1, required: true },
-    // Cresce com o count; fica fora das leituras
-    alertKeys: { type: [String], required: true, select: false },
+    // Também são a lista de alertas da ocorrência: cada chave diz o drone e o horário
+    alertKeys: { type: [String], required: true },
     acknowledgedAt: { type: Date, default: null },
   },
   { collection: 'occurrences', timestamps: true, versionKey: false },

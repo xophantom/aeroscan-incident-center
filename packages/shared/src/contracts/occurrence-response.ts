@@ -11,6 +11,8 @@ export const occurrenceResponseSchema = z.object({
   siteId: z.string(),
   droneId: z.string(),
   droneIds: z.array(z.string()),
+  // Cada alerta contado na ocorrência, do mais antigo ao mais recente
+  alerts: z.array(z.object({ droneId: z.string(), detectedAt: z.string().datetime() })),
   type: z.enum(OCCURRENCE_TYPES),
   severity: z.number().int().min(MIN_SEVERITY).max(MAX_SEVERITY),
   priority: z.number().int().min(1),
