@@ -17,6 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "demo:concurrency": "tsx scripts/demo-concurrency.ts",
+    "demo:feed": "tsx scripts/demo-feed.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
