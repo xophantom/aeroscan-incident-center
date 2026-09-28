@@ -20,7 +20,6 @@ export interface TestApp {
   connection: Connection
   clock: FakeClock
   http: ReturnType<typeof request>
-  /** Endereço do WebSocket de avisos (/events) do app de teste */
   wsUrl: string
   reset(): Promise<void>
   stopDatabase(): Promise<void>
@@ -38,7 +37,6 @@ export async function createTestApp(): Promise<TestApp> {
   try {
     return await bootApp(mongo, clock)
   } catch (error) {
-    // Sem isso um boot quebrado deixa o mongod vivo e o Jest nunca termina
     await mongo.stop()
     throw error
   }
@@ -56,13 +54,13 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
     )
     .overrideProvider(ClockService)
     .useValue(clock)
-    // No módulo de teste o serve-static nasce antes do adapter HTTP e cairia no NoopLoader
+
     .overrideProvider(AbstractLoader)
     .useValue(new ExpressLoader())
     .compile()
 
   const app = configureApp(moduleRef.createNestApplication<NestExpressApplication>(APP_OPTIONS))
-  // Porta real: requisições em paralelo (teste de concorrência) chegam de fato simultâneas
+
   await app.listen(0, '127.0.0.1')
 
   const connection = app.get<Connection>(getConnectionToken())
@@ -76,7 +74,7 @@ async function bootApp(mongo: MongoMemoryServer, clock: FakeClock): Promise<Test
     wsUrl: `ws://127.0.0.1:${port}${EVENTS_PATH}`,
     async reset() {
       clock.set(T0)
-      // deleteMany (e não dropDatabase) para manter os índices criados no boot
+      // deleteMany pra manter os índices criados no boot
       await Promise.all(Object.values(connection.collections).map((c) => c.deleteMany({})))
     },
     async stopDatabase() {
