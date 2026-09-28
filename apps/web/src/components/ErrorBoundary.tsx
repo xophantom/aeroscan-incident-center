@@ -4,7 +4,6 @@ interface ErrorBoundaryProps {
   children: ReactNode
 }
 
-/** Erro de renderização vira uma mensagem, em vez de tela em branco. */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, { failed: boolean }> {
   override state = { failed: false }
 

@@ -11,7 +11,6 @@ export function canTransition(from: OccurrenceStatus, to: OccurrenceStatus): boo
   return STATUS_TRANSITIONS[from].includes(to)
 }
 
-/** Status a partir dos quais se chega em `to`. */
 export function allowedFrom(to: OccurrenceStatus): OccurrenceStatus[] {
   return OCCURRENCE_STATUSES.filter((from) => canTransition(from, to))
 }

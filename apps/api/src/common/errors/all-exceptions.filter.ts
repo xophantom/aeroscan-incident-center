@@ -31,10 +31,8 @@ const HTTP_ERRORS: Partial<Record<number, { code: ErrorCode; message: string }>>
   },
 }
 
-// Erros passageiros: o cliente pode repetir o pedido
 const TRANSIENT_CODES: ReadonlySet<ErrorCode> = new Set(['WRITE_CONFLICT', 'SERVICE_UNAVAILABLE'])
 
-// Banco fora: o driver do Mongo falha ao achar o servidor ou na rede
 const DATABASE_DOWN_ERRORS = new Set([
   'MongoServerSelectionError',
   'MongoNetworkError',

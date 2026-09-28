@@ -61,7 +61,6 @@ const VALID_TRANSITIONS = Object.entries(STATUS_TRANSITIONS)
   .flatMap(([from, targets]) => targets.map((to) => `${from} → ${to}`))
   .join(', ')
 
-// Erros ao ler a requisição, comuns às rotas com corpo
 const ApiBodyErrors = (badRequest: string) =>
   applyDecorators(
     ApiBadRequestResponse({ type: ErrorResponseDto, description: badRequest }),
@@ -72,7 +71,6 @@ const ApiBodyErrors = (badRequest: string) =>
     }),
   )
 
-// Os 503 destas rotas saem com Retry-After: o pedido pode ser repetido
 const ApiUnavailable = (description: string) =>
   ApiServiceUnavailableResponse({
     type: ErrorResponseDto,

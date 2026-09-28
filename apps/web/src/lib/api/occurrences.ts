@@ -9,7 +9,6 @@ import { apiRequest } from './client'
 
 const occurrenceListSchema = z.array(occurrenceResponseSchema)
 
-/** Sem status, lista todas; com vários, repete o parâmetro (?status=open&status=acknowledged). */
 export function listOccurrences(
   statuses: readonly OccurrenceStatus[] = [],
 ): Promise<OccurrenceResponse[]> {

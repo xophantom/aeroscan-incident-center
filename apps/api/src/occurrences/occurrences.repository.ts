@@ -172,7 +172,6 @@ export class OccurrencesRepository implements OnModuleInit {
     }
   }
 
-  /** Ocorrência em que o alerta já foi contado (resposta do reenvio). */
   async findByAlertKey(key: string): Promise<Occurrence> {
     const doc = await this.model.findOne({ alertKeys: key }).orFail().lean<LeanOccurrence>()
     return toOccurrence(doc)
