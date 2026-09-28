@@ -1,3 +1,4 @@
+import type { ErrorCode, ErrorResponse } from '@aeroscan/shared'
 import {
   type ArgumentsHost,
   Catch,
@@ -6,7 +7,6 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common'
-import type { ErrorCode, ErrorResponse } from '@aeroscan/shared'
 import type { Response } from 'express'
 import { AppException } from './app.exception'
 

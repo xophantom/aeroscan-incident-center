@@ -1,6 +1,6 @@
+import type { ServeStaticModuleOptions } from '@nestjs/serve-static'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import type { ServeStaticModuleOptions } from '@nestjs/serve-static'
 
 /**
  * O front não tem rotas: só "/" devolve o index.html, sem fallback que engula 404 da API.

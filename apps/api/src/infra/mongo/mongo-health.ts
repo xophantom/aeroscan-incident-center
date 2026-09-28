@@ -1,7 +1,7 @@
-import { setTimeout as sleep } from 'node:timers/promises'
 import { Injectable } from '@nestjs/common'
 import { InjectConnection } from '@nestjs/mongoose'
 import type { Connection } from 'mongoose'
+import { setTimeout as sleep } from 'node:timers/promises'
 
 // O healthcheck da imagem desiste em 3 s: o ping responde antes disso mesmo com o Mongo travado
 const PING_TIMEOUT_MS = 1_500

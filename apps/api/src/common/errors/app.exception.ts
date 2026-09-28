@@ -1,5 +1,5 @@
-import { HttpException, type HttpStatus } from '@nestjs/common'
 import type { ErrorCode } from '@aeroscan/shared'
+import { HttpException, type HttpStatus } from '@nestjs/common'
 
 export class AppException extends HttpException {
   constructor(

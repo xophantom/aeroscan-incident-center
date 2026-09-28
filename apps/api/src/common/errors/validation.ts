@@ -1,5 +1,5 @@
-import { HttpStatus } from '@nestjs/common'
 import type { ValidationIssue } from '@aeroscan/shared'
+import { HttpStatus } from '@nestjs/common'
 import { AppException } from './app.exception'
 
 interface ZodErrorLike {
