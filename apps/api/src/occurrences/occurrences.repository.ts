@@ -1,7 +1,7 @@
 import {
   MAX_SEVERITY,
+  MIN_SEVERITY,
   OCCURRENCE_TYPES,
-  TYPE_WEIGHT,
   computePriority,
   dedupWindow,
   type CreateOccurrenceInput,
@@ -28,19 +28,23 @@ function listFilter(filter: OccurrenceFilter): FilterQuery<OccurrenceDocument> {
   }
 }
 
-// severity × peso do tipo calculado pelo Mongo (a mesma fórmula de computePriority)
+const SEVERITIES = Array.from(
+  { length: MAX_SEVERITY - MIN_SEVERITY + 1 },
+  (_, offset) => MIN_SEVERITY + offset,
+)
+
+// O Mongo consulta uma tabela montada com computePriority, uma linha por tipo e severidade, e a
+// fórmula fica só no shared. Combinação sem linha (tipo de uma versão revertida) mantém a gravada.
 const PRIORITY_EXPRESSION = {
-  $multiply: [
-    '$severity',
-    {
-      $switch: {
-        branches: OCCURRENCE_TYPES.map((type) => ({
-          case: { $eq: ['$type', type] },
-          then: TYPE_WEIGHT[type],
-        })),
-      },
-    },
-  ],
+  $switch: {
+    branches: OCCURRENCE_TYPES.flatMap((type) =>
+      SEVERITIES.map((severity) => ({
+        case: { $and: [{ $eq: ['$type', type] }, { $eq: ['$severity', severity] }] },
+        then: computePriority(severity, type),
+      })),
+    ),
+    default: '$priority',
+  },
 }
 
 @Injectable()
@@ -54,18 +58,14 @@ export class OccurrencesRepository implements OnModuleInit {
   }
 
   /**
-   * `priority` é denormalizado: se os pesos mudarem, recalcula só as ocorrências divergentes. É
-   * manutenção, não um evento da ocorrência, então não mexe no `updatedAt`. Um tipo que o código
-   * não conhece (gravado por uma versão revertida) fica de fora: o `$switch` não tem peso para ele,
-   * e o `$and` para no primeiro falso, antes do cálculo.
+   * `priority` é denormalizado: se a fórmula ou os pesos mudarem, recalcula só as ocorrências
+   * divergentes. É manutenção, não um evento da ocorrência, então não mexe no `updatedAt`. Um tipo
+   * que o código não conhece (gravado por uma versão revertida) fica como está: não tem linha na
+   * tabela, e o `default` devolve a prioridade gravada.
    */
-  async reconcilePriorities(): Promise<void> {
+  private async reconcilePriorities(): Promise<void> {
     await this.model.updateMany(
-      {
-        $expr: {
-          $and: [{ $in: ['$type', OCCURRENCE_TYPES] }, { $ne: ['$priority', PRIORITY_EXPRESSION] }],
-        },
-      },
+      { $expr: { $ne: ['$priority', PRIORITY_EXPRESSION] } },
       [{ $set: { priority: PRIORITY_EXPRESSION } }],
       { timestamps: false },
     )
